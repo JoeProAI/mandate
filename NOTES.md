@@ -167,3 +167,35 @@ Known gaps:
   relative import fails. `__init__.py` uses the relative import when it has a package (always under
   Hermes) and the absolute `mandate_core` import otherwise. Checked with 112 of 112 tests passing in
   both a `fresh-mandate` and a `mandate2` clone.
+
+## Hermes v0.23.1 follow-up
+
+- `scripts/install_hermes.sh` pins both releases by peeled commit: v0.23.0 `2bd378ed1b8d6bf2192cb26e0a55ff3091e6bd19`,
+  v0.23.1 `3b421578588243f920886e6fe79a6faa87ea026e` (tag object `b65acf3f...`, checked with `git ls-remote`).
+  `HERMES_TAG` picks the release (default v0.23.0), the checkout goes to `~/.cache/mandate-hermes/$HERMES_TAG`,
+  and a `HERMES_SHA` that disagrees with the pin, or an unpinned tag without `HERMES_SHA`, exits 1.
+  `make prove HERMES_TAG=v0.23.1` and `make prove-all` use it; CI runs a matrix over both tags.
+- `requires_hermes` stays `>=0.23.0`: nothing Mandate uses changed in v0.23.1.
+- What changed in v0.23.1 that touches plugins (read from `git diff v0.23.0 v0.23.1`):
+  - `PluginContext` moved from `hermes_cli/plugins.py` to `hermes_cli/plugins_context.py` (the file the
+    original brief named); `plugins.py` re-imports it. Mandate never imports it, so no change.
+  - `pre_tool_call` / `post_tool_call` hooks get a new `conversation_id` kwarg. Mandate's hooks take
+    `**kwargs`, so no change.
+  - New `hermes_cli.plugin_session.session_client()`. Not used.
+  - `_dispatch_pre_tool_call_hooks`, `_resolve_block_from_details`, `cron/execution_identity.py`,
+    `plugins/plugin_storage.py` and `hermes_cli/plugin_validate.py` are unchanged.
+  - Only Mandate change needed: `tests/integration/test_real_hermes.py` asserted the string `v0.23.0` in the
+    Hermes version; it now checks `HERMES_TAG`.
+- Proof JSON: `proof/runs/<tag>.json` per release, `proof/proof.json` lists all of them. Raw drift text is kept
+  out of the JSON: as one JSON string, `rm -rf build` and `~/.ssh/id_rsa` land on one line and the
+  validator's security scan reports `destructive_home_rm` as dangerous, failing validation. PROOF.md keeps
+  them on separate lines (the existing expected warning).
+- `make prove` timing (`scripts/prove.sh`, first line to end of pytest, this VM). Cold: no Hermes checkout for
+  the tag and an empty `UV_CACHE_DIR`; warm: the run right after. Both releases: validate passed, 112 passed,
+  0 failed. Numbers are in `proof/PROOF.md`.
+- Leash Line screenshot: `demo/leash-line.png`, made by `python3 demo/capture_leash_line.py`, which runs
+  `demo/run_demo.sh` with forced color, keeps the first `hermes mandate status nightly-triage` output after the
+  poisoned run, converts its ANSI truecolor to HTML on #0B1426 / #E8EEF8 and screenshots it with headless
+  Chrome. The policy is enforcing in that frame, so no pending (#F5C542) band appears.
+- README comparison facts are from Hermes Guard at `6b8a32db` and agent-security-guard at `b1b923e6`, the
+  commits their catalog PRs (#151899, #151810 on NousResearch/hermes-agent) pin. No PR or issue was opened there.

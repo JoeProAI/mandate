@@ -15,7 +15,10 @@ approves it, blocks every call outside that policy inside the tool loop. Blocked
 inbox you can review and widen. Think AppArmor's "complain, then enforce", per cron job, at argument level.
 
 <!-- runtime:start -->
-`make prove` wall clock, measured on the build VM: see [proof/PROOF.md](proof/PROOF.md).
+`make prove` wall clock on the build VM (validate, full pytest, real-Hermes scenario, hook benchmark; from [proof/proof.json](proof/proof.json)):
+
+- Hermes v0.23.0: 33.7 s warm (Hermes already installed); 51.3 s cold (fresh Hermes clone and install)
+- Hermes v0.23.1: 36.3 s warm (Hermes already installed); 51.6 s cold (fresh Hermes clone and install)
 <!-- runtime:end -->
 
 ## How it compares
@@ -50,21 +53,17 @@ From the last `make prove` run (real Hermes loader, real cron execution identity
 details in [proof/PROOF.md](proof/PROOF.md), raw numbers in [proof/proof.json](proof/proof.json)):
 
 <!-- proof:start -->
-- Hermes: Hermes Agent v0.23.0 (2026.9.24) · stable · local 2bd378ed1b8d
-- Tests: 112 passed, 0 failed
-- Escape cases caught: 73/73
-- Off-policy calls executed: 4/4 in observe mode, 0/4 with Mandate enforcing
-- Legit calls that still succeeded while enforcing: 7/7
-- `pre_tool_call` dispatch with Mandate enforcing: p50 1.797 ms, p95 3.3469 ms
+- Hermes v0.23.0: validate passed; tests 112 passed, 0 failed; escape cases caught 73/73; off-policy calls executed 4/4 in observe mode, 0/4 with Mandate enforcing; legit calls succeeded while enforcing 7/7; `pre_tool_call` with Mandate enforcing p50 1.4507 ms, p95 1.9858 ms; `make prove` 33.7 s warm (Hermes already installed); 51.3 s cold (fresh Hermes clone and install)
+- Hermes v0.23.1: validate passed; tests 112 passed, 0 failed; escape cases caught 73/73; off-policy calls executed 4/4 in observe mode, 0/4 with Mandate enforcing; legit calls succeeded while enforcing 7/7; `pre_tool_call` with Mandate enforcing p50 1.6983 ms, p95 2.1539 ms; `make prove` 36.3 s warm (Hermes already installed); 51.6 s cold (fresh Hermes clone and install)
 
-Proposal after 3 observed runs:
+Proposal after 3 observed runs (Hermes v0.23.1; the workdir is the scenario's throwaway repo):
 
 ```yaml
 # Mandate for nightly-triage: generated from 3 observed run(s).
 # Review every rule. Nothing is enforced until `hermes mandate approve`.
 mandate: 1
 job: "nightly-triage"
-workdir: "/tmp/mandate-int-9ycr77ao/repo"
+workdir: "/tmp/mandate-int-lplnjq5_/repo"
 observed_runs: 3
 tools:
   - "read_file"  # seen 3x
@@ -85,14 +84,14 @@ commands:
 hosts: []
 limits:
   max_writes_per_run: 1
-# proposed v1 sha256:9e7b795a76f7  (12 rules from 3 run(s))
+# proposed v1 sha256:c42f9e67f970  (12 rules from 3 run(s))
 # next: hermes mandate approve nightly-triage
 ```
 
-Leash Line after the poisoned run:
+Leash Line after the poisoned run, no-color fallback:
 
 ```
-MANDATE ▸ nightly-triage  v1 sha256:9e7b795a76f7  ENFORCING
+MANDATE ▸ nightly-triage  v1 sha256:c42f9e67f970  ENFORCING
   tools    ▕▃▃▃▃██▃▃┃ 4 allowed
   paths    ▕██▅▅▅▅──┃ ▼#2 ▼#3  3 allowed · 2 blocked
   commands ▕████████┃ ▼#1 ▼#4  4 allowed · 2 blocked
