@@ -24,6 +24,8 @@ jobs:
       - name: Install pinned Hermes Agent v0.23.0
         run: ./scripts/install_hermes.sh
       - name: hermes plugins validate
-        run: "$HERMES_SRC/.venv/bin/hermes" plugins validate . --install-deps
+        run: |
+          "$HERMES_SRC/.venv/bin/hermes" plugins validate . --install-deps
       - name: pytest
-        run: "$HERMES_SRC/.venv/bin/python" -m pytest
+        run: |
+          "$HERMES_SRC/.venv/bin/python" -m pytest
