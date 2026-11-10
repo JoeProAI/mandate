@@ -5,6 +5,7 @@ cd "$(dirname "$0")/.."
 export HERMES_SRC="${HERMES_SRC:-${XDG_CACHE_HOME:-$HOME/.cache}/mandate-hermes/v0.23.0}"
 ./scripts/install_hermes.sh
 PY="$HERMES_SRC/.venv/bin/python"
+if command -v npm >/dev/null; then ./scripts/install_react.sh; fi
 HERMES="$HERMES_SRC/.venv/bin/hermes"
 # Scratch lives outside the plugin tree: the validator's security scan walks the whole plugin dir.
 TMP="${MANDATE_PROVE_TMP:-${XDG_CACHE_HOME:-$HOME/.cache}/mandate-prove}"
