@@ -36,12 +36,15 @@ def _ver(tag: str) -> tuple:
 
 
 def _readme_unchanged_outside_proof() -> bool:
-    start, end = "<!-- proof:start -->", "<!-- proof:end -->"
     head = subprocess.run(["git", "show", "HEAD:README.md"], cwd=ROOT, capture_output=True, text=True).stdout
     cur = (ROOT / "README.md").read_text() if (ROOT / "README.md").exists() else ""
 
     def strip(t: str) -> str:
-        return t[:t.index(start)] + t[t.index(end):] if start in t and end in t else t
+        for name in ("proof", "runtime"):
+            start, end = f"<!-- {name}:start -->", f"<!-- {name}:end -->"
+            if start in t and end in t:
+                t = t[:t.index(start)] + t[t.index(end):]
+        return t
     return strip(head) == strip(cur)
 
 
