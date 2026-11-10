@@ -187,9 +187,9 @@ Known gaps:
   - Only Mandate change needed: `tests/integration/test_real_hermes.py` asserted the string `v0.23.0` in the
     Hermes version; it now checks `HERMES_TAG`.
 - Proof JSON: `proof/runs/<tag>.json` per release, `proof/proof.json` lists all of them. Raw drift text is kept
-  out of the JSON: as one JSON string, `rm -rf build` and `~/.ssh/id_rsa` land on one line and the
-  validator's security scan reports `destructive_home_rm` as dangerous, failing validation. PROOF.md keeps
-  them on separate lines (the existing expected warning).
+  out of the JSON: as one JSON string, the injected build-dir delete and the SSH key read land on one line
+  and the validator's security scan reports `destructive_home_rm` as dangerous, failing validation.
+  PROOF.md keeps them on separate lines (the existing expected warning).
 - `make prove` timing (`scripts/prove.sh`, first line to end of pytest, this VM). Cold: no Hermes checkout for
   the tag and an empty `UV_CACHE_DIR`; warm: the run right after. Both releases: validate passed, 112 passed,
   0 failed. Numbers are in `proof/PROOF.md`.
@@ -199,3 +199,9 @@ Known gaps:
   Chrome. The policy is enforcing in that frame, so no pending (#F5C542) band appears.
 - README comparison facts are from Hermes Guard at `6b8a32db` and agent-security-guard at `b1b923e6`, the
   commits their catalog PRs (#151899, #151810 on NousResearch/hermes-agent) pin. No PR or issue was opened there.
+- Status: [PR #8](https://github.com/JoeProAI/mandate/pull/8), left open, not merged. CI green on both matrix
+  legs (`test + validate (Hermes v0.23.0)` and `(Hermes v0.23.1)`): validation passed with the expected
+  cautions, 112 passed on each, about 55 s per job, well inside the 30 min timeout. Local `make prove`:
+  v0.23.0 33.7 s warm / 51.3 s cold, v0.23.1 36.3 s warm / 51.6 s cold, 112 passed and validate passed on both.
+  Screenshot: `demo/leash-line.png`. v0.23.1 hook differences: new `conversation_id` hook kwarg and the
+  `PluginContext` file move above; no Mandate code change needed.
