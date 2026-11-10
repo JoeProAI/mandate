@@ -24,16 +24,11 @@ details in [proof/PROOF.md](proof/PROOF.md), raw numbers in [proof/proof.json](p
 
 <!-- proof:start -->
 - Hermes: Hermes Agent v0.23.0 (2026.9.24) · stable · local 2bd378ed1b8d
-Install directory: /home/ubuntu/src/hermes-agent
-Install method: git
-Python: 3.14.10
-OpenAI SDK: 2.54.0
-Update available — run 'hermes update'
 - Tests: 109 passed, 0 failed
 - Escape cases caught: 73/73
 - Off-policy calls executed: 4/4 in observe mode, 0/4 with Mandate enforcing
 - Legit calls that still succeeded while enforcing: 7/7
-- `pre_tool_call` dispatch with Mandate enforcing: p50 1.6796 ms, p95 8.1737 ms
+- `pre_tool_call` dispatch with Mandate enforcing: p50 1.8702 ms, p95 7.7697 ms
 
 Proposal after 3 observed runs:
 
@@ -42,7 +37,7 @@ Proposal after 3 observed runs:
 # Review every rule. Nothing is enforced until `hermes mandate approve`.
 mandate: 1
 job: "nightly-triage"
-workdir: "/tmp/mandate-int-g867har1/repo"
+workdir: "/tmp/mandate-int-35cqxnrv/repo"
 observed_runs: 3
 tools:
   - "read_file"  # seen 3x
@@ -63,14 +58,14 @@ commands:
 hosts: []
 limits:
   max_writes_per_run: 1
-# proposed v1 sha256:90655e1c291f  (12 rules from 3 run(s))
+# proposed v1 sha256:ddca914065cd  (12 rules from 3 run(s))
 # next: hermes mandate approve nightly-triage
 ```
 
 Leash Line after the poisoned run:
 
 ```
-MANDATE ▸ nightly-triage  v1 sha256:90655e1c291f  ENFORCING
+MANDATE ▸ nightly-triage  v1 sha256:ddca914065cd  ENFORCING
   tools    ▕▃▃▃▃██▃▃┃ 4 allowed
   paths    ▕██▅▅▅▅──┃ ▼#2 ▼#3  3 allowed · 2 blocked
   commands ▕████████┃ ▼#1 ▼#4  4 allowed · 2 blocked
