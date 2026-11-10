@@ -156,3 +156,11 @@ Known gaps:
 - `private core imports`: `scripts/integration_scenario.py` and `demo/run_demo.py` import
   `hermes_cli.plugins` and `model_tools` to drive real dispatch from outside an agent. They are test and
   demo drivers, not loaded by `register(ctx)`; the plugin itself uses only `ctx.*` and `plugin_storage`.
+
+## Fresh-clone note
+
+- The checkout root is itself the plugin package (`__init__.py`). When it is cloned into a directory whose
+  name is not a Python identifier (for example `mandate-main`), pytest imports that file standalone and a
+  relative import fails. `__init__.py` uses the relative import when it has a package (always under
+  Hermes) and the absolute `mandate_core` import otherwise. Checked with 112 of 112 tests passing in
+  both a `fresh-mandate` and a `mandate2` clone.
