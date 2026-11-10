@@ -1,0 +1,15 @@
+[project]
+name = "hermes-mandate"
+version = "0.1.0"
+description = "Learned least-privilege for unattended Hermes Agent jobs"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --import-mode=importlib"
+pythonpath = ["."]
+
+[tool.uv]
+exclude-newer = "3 days"
