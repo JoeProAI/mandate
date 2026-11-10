@@ -1,11 +1,11 @@
 {
   "hermes_version": "Hermes Agent v0.23.0 (2026.9.24) \u00b7 stable \u00b7 local 2bd378ed1b8d",
-  "plugin_commit": "024e339cd0d0a521e4a697686ef8c25d03466eb1",
+  "plugin_commit": "198b7152e5f3a20589e5d8b2db47a2e2e8f19bc0",
   "plugin_tree_dirty": false,
   "validate_passed": true,
   "tests": {
-    "total": 109,
-    "passed": 109,
+    "total": 112,
+    "passed": 112,
     "failed": 0,
     "skipped": 0,
     "escape_cases": 73,
@@ -27,10 +27,10 @@
     "drift_records": 4
   },
   "hook_overhead_ms": {
-    "enforce_p50": 1.8702,
-    "enforce_p95": 7.7697,
-    "no_scope_p50": 0.4085,
-    "no_scope_p95": 0.6764,
+    "enforce_p50": 1.8222,
+    "enforce_p95": 10.5655,
+    "no_scope_p50": 0.3964,
+    "no_scope_p95": 4.95,
     "samples": 500
   }
 }
