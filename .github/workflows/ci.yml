@@ -31,7 +31,5 @@ jobs:
       - name: react-dom for the Desktop page render test
         run: ./scripts/install_react.sh
       - name: pytest
-        env:
-          MANDATE_REACT_DIR: ${{ github.workspace }}/../mandate-desktop-test/node_modules
         run: |
           "$HOME/.cache/mandate-hermes/v0.23.0/.venv/bin/python" -m pytest
