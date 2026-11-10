@@ -15,7 +15,6 @@ jobs:
     timeout-minutes: 30
     env:
       UV_EXCLUDE_NEWER: "3 days"
-      HERMES_SRC: ${{ runner.temp }}/hermes-v0.23.0
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -25,7 +24,7 @@ jobs:
         run: ./scripts/install_hermes.sh
       - name: hermes plugins validate
         run: |
-          "$HERMES_SRC/.venv/bin/hermes" plugins validate . --install-deps
+          "$HOME/.cache/mandate-hermes/v0.23.0/.venv/bin/hermes" plugins validate . --install-deps
       - name: pytest
         run: |
-          "$HERMES_SRC/.venv/bin/python" -m pytest
+          "$HOME/.cache/mandate-hermes/v0.23.0/.venv/bin/python" -m pytest
