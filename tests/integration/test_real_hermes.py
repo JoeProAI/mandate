@@ -26,7 +26,7 @@ def scenario():
 
 def test_loaded_by_real_loader(scenario):
     assert scenario["mandate_loaded_by_hermes"] and scenario["mandate_status_registered"]
-    assert "v0.23.0" in scenario["hermes_version"]
+    assert os.environ.get("HERMES_TAG", "v0.23.0") in scenario["hermes_version"]
 
 
 def test_observe_runs_never_blocked(scenario):
