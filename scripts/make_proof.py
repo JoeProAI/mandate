@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -30,15 +31,50 @@ def junit(path: Path) -> dict:
             "escape_cases": len(esc), "escape_caught": sum(status(c) == "passed" for c in esc)}
 
 
+def _ver(tag: str) -> tuple:
+    return tuple(int(x) for x in tag.lstrip("v").split("."))
+
+
+def _readme_unchanged_outside_proof() -> bool:
+    start, end = "<!-- proof:start -->", "<!-- proof:end -->"
+    head = subprocess.run(["git", "show", "HEAD:README.md"], cwd=ROOT, capture_output=True, text=True).stdout
+    cur = (ROOT / "README.md").read_text() if (ROOT / "README.md").exists() else ""
+
+    def strip(t: str) -> str:
+        return t[:t.index(start)] + t[t.index(end):] if start in t and end in t else t
+    return strip(head) == strip(cur)
+
+
+def _timing(run: dict) -> str:
+    parts = []
+    for kind, label in (("warm", "Hermes already installed"), ("cold", "fresh Hermes clone and install")):
+        e = run.get("prove_seconds", {}).get(kind)
+        if e:
+            parts.append(f"{e['seconds']} s {kind} ({label})")
+    return "; ".join(parts) or "not measured"
+
+
 def main() -> int:
-    junit_path, scen_path, validate_path = map(Path, sys.argv[1:4])
+    tag = sys.argv[1]
+    junit_path, scen_path, validate_path = map(Path, sys.argv[2:5])
     scen = json.loads(scen_path.read_text())
     tests = junit(junit_path)
     validate = validate_path.read_text()
     sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
-    dirty = bool(subprocess.run(["git", "status", "--porcelain", "--", ".", ":!proof"], cwd=ROOT,
-                                capture_output=True, text=True).stdout.strip())
-    proof = {
+    # proof/ and the generated README block are outputs of this script, so they do not count as dirty.
+    dirty = bool(subprocess.run(["git", "status", "--porcelain", "--", ".", ":!proof", ":!README.md"], cwd=ROOT,
+                                capture_output=True, text=True).stdout.strip()) or not _readme_unchanged_outside_proof()
+    out = ROOT / "proof"
+    runs_dir = out / "runs"
+    runs_dir.mkdir(parents=True, exist_ok=True)
+    run_file = runs_dir / f"{tag}.json"
+    prev = json.loads(run_file.read_text()) if run_file.exists() else {}
+    timings = {k: v for k, v in prev.get("prove_seconds", {}).items()}
+    secs, kind = os.environ.get("MANDATE_PROVE_SECONDS"), os.environ.get("MANDATE_PROVE_INSTALL")
+    if secs and kind:
+        timings[kind] = {"seconds": float(secs), "plugin_commit": sha}
+    run = {
+        "hermes_tag": tag,
         "hermes_version": scen["hermes_version"],
         "plugin_commit": sha,
         "plugin_tree_dirty": dirty,
@@ -50,55 +86,79 @@ def main() -> int:
             "legit_succeeded_enforce", "cron_visible_reason", "ssh_key_leaked_enforce", "build_dir_intact_enforce",
             "drift_records")},
         "hook_overhead_ms": scen["hook_ms"],
+        "prove_seconds": timings,
+        "proposal": scen["proposal"],
+        "drift": scen["drift"],
+        "leash_line": scen["leash_line"],
     }
-    out = ROOT / "proof"
-    out.mkdir(exist_ok=True)
-    (out / "proof.json").write_text(json.dumps(proof, indent=2) + "\n")
-    s, h, t = proof["scenario"], proof["hook_overhead_ms"], tests
+    run_file.write_text(json.dumps(run, indent=2) + "\n")
+    runs = sorted((json.loads(f.read_text()) for f in runs_dir.glob("v*.json")), key=lambda r: _ver(r["hermes_tag"]))
+    summary = [{k: v for k, v in r.items() if k not in ("proposal", "drift", "leash_line")} for r in runs]
+    (out / "proof.json").write_text(json.dumps({"releases": summary}, indent=2) + "\n")
+
+    def row(label, fn):
+        return f"| {label} | " + " | ".join(fn(r) for r in runs) + " |"
+
+    def frac(a, b):
+        return lambda r: f"{r['scenario'][a]}/{r['scenario'][b]}"
+    head = "| Item | " + " | ".join(f"Hermes {r['hermes_tag']}" for r in runs) + " |"
+    rows = [
+        head, "|---|" + "---|" * len(runs),
+        row("Hermes", lambda r: r["hermes_version"]),
+        row("Plugin commit", lambda r: f"`{r['plugin_commit'][:12]}`" + (" (uncommitted changes)" if r["plugin_tree_dirty"] else "")),
+        row("`hermes plugins validate . --install-deps`", lambda r: "passed" if r["validate_passed"] else "FAILED"),
+        row("Tests", lambda r: f"{r['tests']['passed']} passed, {r['tests']['failed']} failed, {r['tests']['skipped']} skipped (of {r['tests']['total']})"),
+        row("Escape cases caught", lambda r: f"{r['tests']['escape_caught']}/{r['tests']['escape_cases']}"),
+        row("Observe runs (blocked calls)", lambda r: f"{r['scenario']['observe_runs']} ({r['scenario']['observe_blocked']})"),
+        row("Proposed rules", lambda r: str(r["scenario"]["proposal_rules"])),
+        row("Off-policy calls executed, observe only", frac("off_policy_executed_observe", "off_policy_calls")),
+        row("Off-policy calls executed, enforce", frac("off_policy_executed_enforce", "off_policy_calls")),
+        row("Legit calls succeeded, enforce", frac("legit_succeeded_enforce", "legit_calls_enforce")),
+        row("Drift records", lambda r: str(r["scenario"]["drift_records"])),
+        row("Cron-visible block reason", lambda r: str(r["scenario"]["cron_visible_reason"])),
+        row("SSH key canary leaked (enforce)", lambda r: str(r["scenario"]["ssh_key_leaked_enforce"])),
+        row("build/ intact (enforce)", lambda r: str(r["scenario"]["build_dir_intact_enforce"])),
+        row("pre_tool_call dispatch, Mandate enforcing, p50 / p95",
+            lambda r: f"{r['hook_overhead_ms']['enforce_p50']} ms / {r['hook_overhead_ms']['enforce_p95']} ms ({r['hook_overhead_ms']['samples']} samples)"),
+        row("pre_tool_call dispatch, no job scope, p50 / p95",
+            lambda r: f"{r['hook_overhead_ms']['no_scope_p50']} ms / {r['hook_overhead_ms']['no_scope_p95']} ms"),
+        row("`make prove` wall clock", _timing),
+    ]
+    last = runs[-1]
     md = f"""# Mandate proof
 
-Generated by `make prove`. Every number below is read from `proof/proof.json`.
+Generated by `make prove` (one Hermes release per run; `make prove-all` runs every supported release).
+Every number below is read from `proof/proof.json` (per-release files in `proof/runs/`).
 
-| Item | Value |
-|---|---|
-| Hermes | {proof['hermes_version']} |
-| Plugin commit | `{sha}`{' (uncommitted changes)' if dirty else ''} |
-| `hermes plugins validate . --install-deps` | {'passed' if proof['validate_passed'] else 'FAILED'} |
-| Tests | {t['passed']} passed, {t['failed']} failed, {t['skipped']} skipped (of {t['total']}) |
-| Escape cases caught | {t['escape_caught']}/{t['escape_cases']} |
-| Observe runs (blocked calls) | {s['observe_runs']} ({s['observe_blocked']}) |
-| Proposed rules | {s['proposal_rules']} |
-| Off-policy calls executed, observe only | {s['off_policy_executed_observe']}/{s['off_policy_calls']} |
-| Off-policy calls executed, enforce | {s['off_policy_executed_enforce']}/{s['off_policy_calls']} |
-| Legit calls succeeded, enforce | {s['legit_succeeded_enforce']}/{s['legit_calls_enforce']} |
-| Drift records | {s['drift_records']} |
-| Cron-visible block reason | {s['cron_visible_reason']} |
-| SSH key canary leaked (enforce) | {s['ssh_key_leaked_enforce']} |
-| build/ intact (enforce) | {s['build_dir_intact_enforce']} |
-| pre_tool_call dispatch, Mandate enforcing, p50 / p95 | {h['enforce_p50']} ms / {h['enforce_p95']} ms ({h['samples']} samples) |
-| pre_tool_call dispatch, no job scope, p50 / p95 | {h['no_scope_p50']} ms / {h['no_scope_p95']} ms |
+{chr(10).join(rows)}
+
+`make prove` wall clock is measured by `scripts/prove.sh` from its first line to the end of pytest, on the
+VM that generated this file. "warm" means Hermes for that tag was already installed; "cold" means the run
+cloned and installed it.
 
 The scenario loads Mandate through Hermes's own plugin loader, binds real cron execution identities
 (`cron.execution_identity.enter_cron_execution`) for `nightly-triage`, and sends each call through
 `model_tools.handle_function_call`, so the real `pre_tool_call` path decides. Legit calls really run
 (terminal, read_file, search_files, write_file) in a throwaway git repo with a fake HOME.
 
+Sections below are from the Hermes {last['hermes_tag']} run.
+
 ## Proposal (from the 3 observed runs)
 
 ```yaml
-{scen['proposal'].rstrip()}
+{last['proposal'].rstrip()}
 ```
 
 ## Drift inbox after the poisoned run
 
 ```
-{scen['drift'].rstrip()}
+{last['drift'].rstrip()}
 ```
 
 ## Leash Line
 
 ```
-{scen['leash_line'].rstrip()}
+{last['leash_line'].rstrip()}
 ```
 """
     (out / "PROOF.md").write_text(md)
@@ -106,22 +166,32 @@ The scenario loads Mandate through Hermes's own plugin loader, binds real cron e
     start, end = "<!-- proof:start -->", "<!-- proof:end -->"
     if readme.exists() and start in readme.read_text():
         text = readme.read_text()
-        block = (f"{start}\n"
-                 f"- Hermes: {proof['hermes_version']}\n"
-                 f"- Tests: {t['passed']} passed, {t['failed']} failed\n"
-                 f"- Escape cases caught: {t['escape_caught']}/{t['escape_cases']}\n"
-                 f"- Off-policy calls executed: {s['off_policy_executed_observe']}/{s['off_policy_calls']} "
-                 f"in observe mode, {s['off_policy_executed_enforce']}/{s['off_policy_calls']} with Mandate enforcing\n"
-                 f"- Legit calls that still succeeded while enforcing: "
-                 f"{s['legit_succeeded_enforce']}/{s['legit_calls_enforce']}\n"
-                 f"- `pre_tool_call` dispatch with Mandate enforcing: p50 {h['enforce_p50']} ms, "
-                 f"p95 {h['enforce_p95']} ms\n\n"
-                 f"Proposal after 3 observed runs:\n\n```yaml\n{scen['proposal'].rstrip()}\n```\n\n"
-                 f"Leash Line after the poisoned run:\n\n```\n{scen['leash_line'].rstrip()}\n```\n"
+        lines = []
+        for r in runs:
+            t, s, h = r["tests"], r["scenario"], r["hook_overhead_ms"]
+            lines.append(
+                f"- Hermes {r['hermes_tag']}: validate {'passed' if r['validate_passed'] else 'FAILED'}; "
+                f"tests {t['passed']} passed, {t['failed']} failed; escape cases caught {t['escape_caught']}/{t['escape_cases']}; "
+                f"off-policy calls executed {s['off_policy_executed_observe']}/{s['off_policy_calls']} in observe mode, "
+                f"{s['off_policy_executed_enforce']}/{s['off_policy_calls']} with Mandate enforcing; legit calls succeeded "
+                f"while enforcing {s['legit_succeeded_enforce']}/{s['legit_calls_enforce']}; `pre_tool_call` with Mandate "
+                f"enforcing p50 {h['enforce_p50']} ms, p95 {h['enforce_p95']} ms; `make prove` {_timing(r)}")
+        block = (f"{start}\n" + "\n".join(lines) + "\n\n"
+                 f"Proposal after 3 observed runs (Hermes {last['hermes_tag']}; the workdir is the scenario's throwaway repo):\n\n"
+                 f"```yaml\n{last['proposal'].rstrip()}\n```\n\n"
+                 f"Leash Line after the poisoned run, no-color fallback:\n\n```\n{last['leash_line'].rstrip()}\n```\n"
                  f"{end}")
-        readme.write_text(text[:text.index(start)] + block + text[text.index(end) + len(end):])
+        text = text[:text.index(start)] + block + text[text.index(end) + len(end):]
+        rs, re_ = "<!-- runtime:start -->", "<!-- runtime:end -->"
+        if rs in text and re_ in text:
+            times = "\n".join(f"- Hermes {r['hermes_tag']}: {_timing(r)}" for r in runs)
+            rblock = (f"{rs}\n`make prove` wall clock on the build VM (validate, full pytest, real-Hermes scenario, "
+                      f"hook benchmark; from [proof/proof.json](proof/proof.json)):\n\n{times}\n{re_}")
+            text = text[:text.index(rs)] + rblock + text[text.index(re_) + len(re_):]
+        readme.write_text(text)
     print(md)
-    ok = (proof["validate_passed"] and t["failed"] == 0 and s["off_policy_executed_enforce"] == 0
+    t, s = tests, run["scenario"]
+    ok = (run["validate_passed"] and t["failed"] == 0 and s["off_policy_executed_enforce"] == 0
           and s["legit_succeeded_enforce"] == s["legit_calls_enforce"] and t["escape_caught"] == t["escape_cases"])
     return 0 if ok else 1
 

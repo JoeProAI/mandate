@@ -2,11 +2,38 @@
 
 Learned least-privilege for unattended Hermes jobs.
 
+![Leash Line from hermes mandate status nightly-triage after the poisoned demo run: tools, paths, commands, hosts tracks with blocked-call notches #1 to #4](demo/leash-line.png)
+
+Real render of `hermes mandate status nightly-triage` right after the poisoned run in `demo/run_demo.sh`
+(regenerate with `python3 demo/capture_leash_line.py`). The policy is enforcing, so there is no pending
+(#F5C542) band in this frame. The no-color text version is under [Results](#results).
+
 A Hermes cron job that "triages my repo issues" gets the whole terminal and file toolset, with any
 argument, every night, with nobody watching. Mandate watches what the job actually does, turns that into
 a short, readable policy (tools, path globs, command shapes, hosts, a write budget), and once a human
 approves it, blocks every call outside that policy inside the tool loop. Blocked calls land in a drift
 inbox you can review and widen. Think AppArmor's "complain, then enforce", per cron job, at argument level.
+
+<!-- runtime:start -->
+`make prove` wall clock, measured on the build VM: see [proof/PROOF.md](proof/PROOF.md).
+<!-- runtime:end -->
+
+## How it compares
+
+Two other catalog submissions guard `pre_tool_call`. Facts below are from their public source at the commit
+each catalog PR pins, and from the catalog PRs.
+
+| | Mandate | [Hermes Guard](https://github.com/elianjuan-g/hermes-guard/blob/6b8a32db62a4944f2b1c3757bd64e998b638e0c1/README.md) ([catalog PR](https://github.com/NousResearch/hermes-agent/pull/151899)) | [agent-security-guard](https://github.com/xMannixx/Agent-Security-Guard/blob/b1b923e6733f2a3dd7f0a79318d452ad395d8340/README.md) ([catalog PR](https://github.com/NousResearch/hermes-agent/pull/151810)) |
+|---|---|---|---|
+| Hooks | `pre_tool_call`, `post_tool_call` | `pre_llm_call`, `pre_tool_call` (catalog entry) | `pre_llm_call`, `pre_tool_call`, `transform_tool_result` (catalog entry) |
+| Where the rules come from | Compiled from the job's own observed runs, then approved by a human | Built-in deterministic patterns for known prompt-injection shapes ([README](https://github.com/elianjuan-g/hermes-guard/blob/6b8a32db62a4944f2b1c3757bd64e998b638e0c1/README.md#L20-L26)) | Built-in deterministic transition rules (what untrusted content may become) plus configurable tool tiers ([rule table](https://github.com/xMannixx/Agent-Security-Guard/blob/b1b923e6733f2a3dd7f0a79318d452ad395d8340/README.md#L100-L130)) |
+| Scope of a policy | One policy per cron job id | Same patterns for every session; it also tracks a per-session taint state ([hooks.py](https://github.com/elianjuan-g/hermes-guard/blob/6b8a32db62a4944f2b1c3757bd64e998b638e0c1/src/hermes_guard/hooks.py#L251-L257)) | A `guard.yaml` per Hermes profile plus a root-owned one in `/etc`; one audit trail per OS user ([plugin README](https://github.com/xMannixx/Agent-Security-Guard/blob/b1b923e6733f2a3dd7f0a79318d452ad395d8340/plugin/README.md#L100-L102)) |
+| What `pre_tool_call` checks | Each argument against the approved policy: parsed shell segments, resolved real paths, parsed hostnames, write count; unknown tools denied | Serialized tool arguments against RCE/subshell, hidden-payload and credential-path patterns ([hooks.py](https://github.com/elianjuan-g/hermes-guard/blob/6b8a32db62a4944f2b1c3757bd64e998b638e0c1/src/hermes_guard/hooks.py#L251-L275)) | The call's kind and the chain before it: after web or search content enters a turn, shell, file write, install, config and external-send calls need confirmation; secrets in requests are denied ([rule table](https://github.com/xMannixx/Agent-Security-Guard/blob/b1b923e6733f2a3dd7f0a79318d452ad395d8340/README.md#L100-L130), [README](https://github.com/xMannixx/Agent-Security-Guard/blob/b1b923e6733f2a3dd7f0a79318d452ad395d8340/README.md#L401)) |
+| On a violation | Cron: block. Interactive scope: Hermes approval prompt if configured, else block | Block ([hooks.py](https://github.com/elianjuan-g/hermes-guard/blob/6b8a32db62a4944f2b1c3757bd64e998b638e0c1/src/hermes_guard/hooks.py#L397-L416)) | Hermes approval prompt for confirmations, block otherwise ([plugin/\_\_init\_\_.py](https://github.com/xMannixx/Agent-Security-Guard/blob/b1b923e6733f2a3dd7f0a79318d452ad395d8340/plugin/__init__.py#L522-L541)) |
+| Stated limits | [Threat model and known limits](#threat-model-and-known-limits) | "novel obfuscation that matches no pattern will pass" ([README](https://github.com/elianjuan-g/hermes-guard/blob/6b8a32db62a4944f2b1c3757bd64e998b638e0c1/README.md#L215)) | "not a sandbox"; unknown third-party tools stay free after outside content unless declared ([plugin README](https://github.com/xMannixx/Agent-Security-Guard/blob/b1b923e6733f2a3dd7f0a79318d452ad395d8340/plugin/README.md#L95-L99)) |
+
+The three solve different problems and can run together: the other two look for injected content and risky
+transitions; Mandate limits a known job to the calls it was approved to make.
 
 ## Why a plugin and not a prompt
 
@@ -198,6 +225,8 @@ Disabling leaves no residual effect: Mandate changes no Hermes config and wraps 
 
 ```bash
 make prove            # pinned Hermes v0.23.0, validate, tests, real-Hermes scenario, benchmark, proof/
+make prove HERMES_TAG=v0.23.1   # same on Hermes v0.23.1
+make prove-all        # both releases, one after the other
 ./demo/run_demo.sh    # the 90-second story, deterministic, for screen recording (DEMO_PAUSE=0 to skip pauses)
 scripts/live_demo.sh  # live run through Hermes cron with a real model: needs your own configured model key
 ```
