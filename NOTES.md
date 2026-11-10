@@ -58,3 +58,25 @@ Working notes for the Hermes Agent Plugin Hackathon entry. Pinned target: Hermes
 - `hermes plugins validate` scans every file under the plugin dir (only `.git`, `.venv`,
   caches excluded), so the Hermes checkout used for tests lives outside the repo
   (`~/.cache/mandate-hermes/v0.23.0`, or `$HERMES_SRC`).
+
+## M2 design (policy engine, pure Python)
+
+- `shell.py`: own POSIX-ish lexer (shlex loses quote context, so `echo ';'` and `;` look the same).
+  Segments split on `; && || | |& & newline`. Opaque (verbatim-only) when: command or process
+  substitution, backticks, ANSI-C quoting, heredoc/herestring, subshell, variable or brace
+  expansion, nested shells, inline interpreter code (`python -c`, `node -e`, stdin), awk
+  programs, command-running wrappers (`eval`, `xargs`, `sudo`, `timeout`, `nohup`, ...),
+  `find -exec`, unparseable input. `env`/leading `X=1` assignments are unwrapped and the
+  variable names must be allowed by the rule (`X= git log`).
+- Command rule syntax: `[NAME=]... head [subcommand...] [-flags...]`; segment flags must be a
+  subset of the rule's flags. `=<verbatim>` allows one exact opaque segment. `-*` and a
+  trailing `*` word are only produced by `widen --pattern`.
+- Paths: `realpath` against the effective cwd (terminal `workdir`, `cd`), then relative to the
+  job workdir. Relative globs never match outside paths; outside paths need an absolute rule.
+  Command args are checked as paths for file heads (`cat`, `rm`, ...) and for any arg that looks
+  like an escape (`/`, `~`, `..`). Redirect targets are writes.
+- Hosts: `urlsplit` hostname after the last `@`; reject backslash, percent, whitespace, control
+  chars; lowercase, strip trailing dot, IDNA-encode; IPv4 legacy forms normalized with
+  `inet_aton` (`2130706433` -> `127.0.0.1`); non-default port becomes part of the host.
+- YAML is a fixed subset we render and parse ourselves (no PyYAML dependency); every scalar is
+  JSON-quoted, rules are sorted, evidence lives in `# seen Nx` comments.
