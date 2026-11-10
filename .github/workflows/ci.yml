@@ -1,0 +1,30 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: test + validate (Hermes v0.23.0)
+    timeout-minutes: 30
+    env:
+      UV_EXCLUDE_NEWER: "3 days"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.7"
+      - name: Install pinned Hermes Agent v0.23.0
+        run: ./scripts/install_hermes.sh
+      - name: hermes plugins validate
+        run: |
+          "$HOME/.cache/mandate-hermes/v0.23.0/.venv/bin/hermes" plugins validate . --install-deps
+      - name: pytest
+        run: |
+          "$HOME/.cache/mandate-hermes/v0.23.0/.venv/bin/python" -m pytest

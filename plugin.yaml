@@ -1,0 +1,41 @@
+manifest_version: 2
+name: mandate
+version: "0.1.0"
+description: "Learned least-privilege for unattended Hermes jobs. Observes what a cron job actually does, proposes a minimal argument-level mandate (tools, paths, commands, hosts, write budget), and once a human approves it, blocks out-of-mandate tool calls inside the tool loop and records them in a drift inbox."
+author: "Joe Gaither (JoeProAI)"
+license: MIT
+homepage: https://github.com/JoeProAI/mandate
+requires_hermes: ">=0.23.0"
+kind: standalone
+platforms:
+  - linux
+  - macos
+provides_tools:
+  - mandate_status
+provides_hooks:
+  - pre_tool_call
+  - post_tool_call
+config_schema:
+  mode:
+    type: str
+    label: Default mode
+    description: "Mode for jobs that have no per-job mode yet. observe records and never blocks; enforce blocks calls outside the approved mandate."
+    choices: [observe, enforce]
+    default: observe
+  unattended_violation:
+    type: str
+    label: Unattended violation
+    description: "What happens to an out-of-mandate call in a cron run. Only block is supported: nobody is present to approve."
+    choices: [block]
+    default: block
+  interactive_violation:
+    type: str
+    label: Interactive violation
+    description: "What happens to an out-of-mandate call in an interactive scope: approve escalates to the Hermes approval prompt, block refuses."
+    choices: [approve, block]
+    default: approve
+  observe_all_cron:
+    type: bool
+    label: Observe all cron jobs
+    description: "Record call shapes for every cron job, not only jobs started with hermes mandate watch."
+    default: true
