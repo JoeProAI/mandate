@@ -11,7 +11,7 @@ from typing import Any
 from . import shell
 from .hosts import host_of
 from .paths import PathRef, resolve
-from .redact import call_summary
+from .redact import call_summary, redact
 
 EXEMPT_TOOLS = {"mandate_status"}
 WRITE_TOOLS = {"write_file", "patch"}
@@ -40,9 +40,9 @@ class CallShape:
             "summary": self.summary,
             "reads": [[r.value, r.inside, r.valid] for r in self.reads],
             "writes": [[r.value, r.inside, r.valid] for r in self.writes],
-            "segments": [{"raw": s.raw[:300], "key": s.key(), "words": list(s.words), "flags": list(s.flags),
+            "segments": [{"raw": redact(s.raw, 300), "key": s.key(), "words": list(s.words), "flags": list(s.flags),
                           "env": list(s.env), "opaque": s.opaque} for s in self.segments],
-            "hosts": list(self.hosts),
+            "hosts": [redact(h, 200) for h in self.hosts],
             "write_count": self.write_count,
         }
 

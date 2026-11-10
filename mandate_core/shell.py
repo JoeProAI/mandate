@@ -410,7 +410,8 @@ def host_candidates(seg: Segment) -> list[str]:
             out.append(v)
     if lname in NETWORK_HEADS:
         for v in seg.positionals:
-            if not _URL_RE.match(v) and v and not v.startswith(("-", "/", ".", "~")) and ("." in v or ":" in v):
+            if not _URL_RE.match(v) and v and not v.startswith(("-", "/", ".", "~")) and ("." in v or ":" in v) \
+                    and not any(c.isspace() for c in v):
                 out.append("http://" + v)
     if lname in REMOTE_HEADS:
         for v in seg.positionals:
