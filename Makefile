@@ -18,7 +18,7 @@ test: hermes
 prove:
 	./scripts/prove.sh
 
-# Proof on every supported Hermes release, one after the other (proof/ keeps one section per release).
+# Proof on every supported Hermes release; proof/ keeps one column per release, details from the last run.
 prove-all:
 	HERMES_TAG=v0.23.0 HERMES_SRC= ./scripts/prove.sh
 	HERMES_TAG=v0.23.1 HERMES_SRC= ./scripts/prove.sh
