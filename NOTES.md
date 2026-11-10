@@ -80,3 +80,25 @@ Working notes for the Hermes Agent Plugin Hackathon entry. Pinned target: Hermes
   `inet_aton` (`2130706433` -> `127.0.0.1`); non-default port becomes part of the host.
 - YAML is a fixed subset we render and parse ourselves (no PyYAML dependency); every scalar is
   JSON-quoted, rules are sorted, evidence lives in `# seen Nx` comments.
+
+## M4 notes (real-Hermes scenario + proof)
+
+- `scripts/integration_scenario.py` copies the plugin into an isolated `HERMES_HOME/plugins/mandate`,
+  enables it in `config.yaml`, calls `hermes_cli.plugins.discover_plugins(force=True)`, binds
+  `cron.execution_identity.enter_cron_execution({"id": ..., "name": "nightly-triage"}, exec_id, record)`
+  and sends every call through `model_tools.handle_function_call`. No mocks between the call and the
+  real `_dispatch_pre_tool_call_hooks`; legit calls really execute in a throwaway git repo with a fake HOME.
+- CLI steps (`watch`, `propose`, `approve --yes`, `drift`, `status`) run as real `hermes mandate ...`
+  subprocesses against the same `HERMES_HOME`.
+- Baseline job (`nightly-triage-baseline`, never approved) runs the same poisoned sequence to measure what
+  executes without Mandate enforcing. Hermes's own dangerous-command guard did not stop any of the four
+  off-policy calls in this direct-dispatch setup (`rm -rf build` inside the workdir and `curl | sh` are
+  not refused there), which is the gap Mandate fills.
+- Validator surprise: running `hermes plugins validate . --install-deps` with `HERMES_HOME` inside the
+  plugin tree makes the validator create an install workspace under it and then scan that copy of Hermes
+  (dozens of "patches Hermes module attribute" findings, then failure). `prove.sh` keeps all scratch in
+  `~/.cache/mandate-prove`.
+- Full end-to-end through `cron.scheduler.run_job` needs an `AIAgent` and a model endpoint. Hermes ships
+  `tests/fakes/fake_llm_provider.py` (scripted OpenAI-compatible loopback server) but it lives in Hermes's
+  test tree, not the installed package API; the deterministic scenario drives the same dispatch path below
+  the model. `scripts/live_demo.sh` runs a real cron job with whatever model Joe has configured.

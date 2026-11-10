@@ -13,3 +13,6 @@ validate: hermes
 
 test: hermes
 	$(PY) -m pytest
+
+prove:
+	./scripts/prove.sh
