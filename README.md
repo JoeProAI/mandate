@@ -24,11 +24,11 @@ details in [proof/PROOF.md](proof/PROOF.md), raw numbers in [proof/proof.json](p
 
 <!-- proof:start -->
 - Hermes: Hermes Agent v0.23.0 (2026.9.24) · stable · local 2bd378ed1b8d
-- Tests: 109 passed, 0 failed
+- Tests: 112 passed, 0 failed
 - Escape cases caught: 73/73
 - Off-policy calls executed: 4/4 in observe mode, 0/4 with Mandate enforcing
 - Legit calls that still succeeded while enforcing: 7/7
-- `pre_tool_call` dispatch with Mandate enforcing: p50 1.8702 ms, p95 7.7697 ms
+- `pre_tool_call` dispatch with Mandate enforcing: p50 1.8222 ms, p95 10.5655 ms
 
 Proposal after 3 observed runs:
 
@@ -37,7 +37,7 @@ Proposal after 3 observed runs:
 # Review every rule. Nothing is enforced until `hermes mandate approve`.
 mandate: 1
 job: "nightly-triage"
-workdir: "/tmp/mandate-int-35cqxnrv/repo"
+workdir: "/tmp/mandate-int-zx7c5hpi/repo"
 observed_runs: 3
 tools:
   - "read_file"  # seen 3x
@@ -58,14 +58,14 @@ commands:
 hosts: []
 limits:
   max_writes_per_run: 1
-# proposed v1 sha256:ddca914065cd  (12 rules from 3 run(s))
+# proposed v1 sha256:733689a06875  (12 rules from 3 run(s))
 # next: hermes mandate approve nightly-triage
 ```
 
 Leash Line after the poisoned run:
 
 ```
-MANDATE ▸ nightly-triage  v1 sha256:ddca914065cd  ENFORCING
+MANDATE ▸ nightly-triage  v1 sha256:733689a06875  ENFORCING
   tools    ▕▃▃▃▃██▃▃┃ 4 allowed
   paths    ▕██▅▅▅▅──┃ ▼#2 ▼#3  3 allowed · 2 blocked
   commands ▕████████┃ ▼#1 ▼#4  4 allowed · 2 blocked
@@ -105,6 +105,15 @@ drift id, yellow triangles are blocked calls that were widened. Truecolor on a d
 and non-terminal output fall back to plain text.
 
 The Leash Line from the last proof run is in the Results section above.
+
+## Desktop page
+
+Hermes Desktop gets a **Mandate** page (sidebar entry and a palette command "Mandate: open jobs"): the jobs
+list, the Leash Line for the selected job, the diff to the pending version, and the drift timeline. It is
+read-only on purpose; approving and widening stay in the terminal, where a human types them. The desktop
+half ships disabled: turn it on in Capabilities, Plugins. Its data comes from `dashboard/plugin_api.py`,
+which opens Mandate's SQLite file read-only and serves two GET routes on Hermes's own local API
+(`/api/plugins/mandate/jobs` and `/api/plugins/mandate/jobs/<job>`), behind Hermes's normal auth.
 
 ## Commands
 
@@ -165,7 +174,8 @@ sandbox.
 
 ## Disclosures
 
-- No network access. The plugin never opens a socket.
+- No outbound network access. The plugin never opens a socket. The optional Desktop page reads through two
+  read-only GET routes that Hermes itself serves under `/api/plugins/mandate/`.
 - Reads and writes only its own data dir: `<HERMES_HOME>/plugin-data/mandate/mandate.db`.
 - Runs no shell commands and starts no background processes or threads.
 - Uses no credentials and sends no telemetry.
@@ -195,7 +205,7 @@ scripts/live_demo.sh  # live run through Hermes cron with a real model: needs yo
 ## How this was built
 
 AI-assisted: written by Devin (Cognition) from a brief by Grok Bot for Joe Gaither. All code is new since
-Nov 5, 2026, built and tested against Hermes Agent v0.23.0. Milestones landed as PRs #1 to #5 in this repo.
+Nov 5, 2026, built and tested against Hermes Agent v0.23.0. Milestones landed as PRs #1 to #6 in this repo.
 API surprises and design notes are in [NOTES.md](NOTES.md).
 
 ## License

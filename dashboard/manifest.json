@@ -1,0 +1,8 @@
+{
+  "name": "mandate",
+  "label": "Mandate",
+  "description": "Read-only Mandate data for the Desktop page: jobs, policy diff, drift, Leash Line.",
+  "version": "0.1.0",
+  "api": "plugin_api.py",
+  "tab": { "hidden": true }
+}

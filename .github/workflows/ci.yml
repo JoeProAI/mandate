@@ -25,6 +25,11 @@ jobs:
       - name: hermes plugins validate
         run: |
           "$HOME/.cache/mandate-hermes/v0.23.0/.venv/bin/hermes" plugins validate . --install-deps
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: react-dom for the Desktop page render test
+        run: ./scripts/install_react.sh
       - name: pytest
         run: |
           "$HOME/.cache/mandate-hermes/v0.23.0/.venv/bin/python" -m pytest

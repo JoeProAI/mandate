@@ -127,5 +127,32 @@ Known gaps:
 - No true end-to-end through `cron.scheduler.run_job` with a model in CI: that needs an `AIAgent` and a
   model endpoint. The deterministic scenario drives the same dispatch path below the model.
   `scripts/live_demo.sh` does the full cron run with Joe's configured model; it has not been run here.
-- M6 (Desktop page) skipped.
 - Hook overhead p95 varies between runs on a shared VM; each enforced call does a few small SQLite writes.
+
+## M6 notes (Desktop page)
+
+- `desktop/plugin.js` is a unified-package desktop half (Hermes copies it to `desktop-plugins/mandate/`).
+  It imports only `@hermes/plugin-sdk`, `react` and `react/jsx-runtime`, uses `jsx()` calls (no build
+  step), registers a route, a sidebar nav entry and a palette command, and ships `defaultEnabled: false`.
+- There is no plugin.yaml or catalog `capabilities` field for a desktop half or dashboard API in v0.23.0;
+  the validator detects `desktop/plugin.js` itself (`loadable: entry: __init__.py, desktop/plugin.js`) and
+  runs the `desktop surface` check, which passes.
+- Data: `dashboard/plugin_api.py` (FastAPI `router`, mounted by Hermes at `/api/plugins/mandate/`) opens
+  the SQLite file with `mode=ro`. It is self-contained because Hermes imports it as a lone file outside
+  the plugin package. Tests check its rule data equals `mandate_core`'s and that the DB bytes do not change.
+- Hermes asks desktop plugins to use theme variables and leave the page background alone. The page does
+  that; only the Leash Line card uses the brief's night-ink navy, and the signal colours stay fixed because
+  they carry meaning. Fonts are named with system fallbacks; nothing is fetched.
+- No animation is used, so reduced-motion needs no special case. Every interactive element is a button
+  or has `tabIndex=0`, with a `focus-visible` ring.
+- `tests/test_desktop.py` renders the page under node with a small SDK stub and real `react-dom/server`
+  (skipped without node and `MANDATE_REACT_DIR`). It was not checked inside a running Hermes Desktop app.
+
+## Validator warnings (expected)
+
+- `security scan caution`: `curl_pipe_shell` and `ssh_dir_access` are the poisoned test inputs in
+  `scripts/integration_scenario.py` and the quoted call in `proof/PROOF.md`. They are strings Mandate must
+  block, never executed by the plugin.
+- `private core imports`: `scripts/integration_scenario.py` and `demo/run_demo.py` import
+  `hermes_cli.plugins` and `model_tools` to drive real dispatch from outside an agent. They are test and
+  demo drivers, not loaded by `register(ctx)`; the plugin itself uses only `ctx.*` and `plugin_storage`.
