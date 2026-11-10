@@ -73,7 +73,9 @@ def leash_line(job: str, active: Policy | None, version: int | None, sha: str | 
         used = len(cells) * 2 + len(new) * 2
         band = paint("".join(cells), ALLOW) + paint("\u25c6\u25c6" * len(new), PENDING)
         filler = paint("\u2500" * (width - used), DIM)
-        marks = " ".join(paint("\u25bc", DENY, True) + paint(f"#{d['id']}", DENY) for d in notches[t][-6:])
+        marks = " ".join((paint("\u25bc", DENY, True) + paint(f"#{d['id']}", DENY)) if d["status"] == "open"
+                         else (paint("\u25b3", PENDING, True) + paint(f"#{d['id']}", PENDING))
+                         for d in notches[t][-6:])
         if len(notches[t]) > 6:
             marks += paint(f" +{len(notches[t]) - 6}", DENY)
         meta = paint(f"{len(cells)} allowed", ALLOW)

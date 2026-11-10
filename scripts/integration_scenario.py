@@ -76,7 +76,7 @@ def main() -> int:
     os.chdir(s["wd"])
 
     exe = Path(sys.executable).with_name("hermes")
-    hermes_version = subprocess.run([str(exe), "--version"], capture_output=True, text=True).stdout.strip()
+    hermes_version = subprocess.run([str(exe), "--version"], capture_output=True, text=True).stdout.strip().splitlines()[0]
     from hermes_cli.plugins import discover_plugins, get_plugin_manager, _dispatch_pre_tool_call_hooks
     from cron.execution_identity import enter_cron_execution, exit_cron_execution
     import model_tools

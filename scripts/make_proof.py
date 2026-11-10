@@ -102,6 +102,24 @@ The scenario loads Mandate through Hermes's own plugin loader, binds real cron e
 ```
 """
     (out / "PROOF.md").write_text(md)
+    readme = ROOT / "README.md"
+    start, end = "<!-- proof:start -->", "<!-- proof:end -->"
+    if readme.exists() and start in readme.read_text():
+        text = readme.read_text()
+        block = (f"{start}\n"
+                 f"- Hermes: {proof['hermes_version']}\n"
+                 f"- Tests: {t['passed']} passed, {t['failed']} failed\n"
+                 f"- Escape cases caught: {t['escape_caught']}/{t['escape_cases']}\n"
+                 f"- Off-policy calls executed: {s['off_policy_executed_observe']}/{s['off_policy_calls']} "
+                 f"in observe mode, {s['off_policy_executed_enforce']}/{s['off_policy_calls']} with Mandate enforcing\n"
+                 f"- Legit calls that still succeeded while enforcing: "
+                 f"{s['legit_succeeded_enforce']}/{s['legit_calls_enforce']}\n"
+                 f"- `pre_tool_call` dispatch with Mandate enforcing: p50 {h['enforce_p50']} ms, "
+                 f"p95 {h['enforce_p95']} ms\n\n"
+                 f"Proposal after 3 observed runs:\n\n```yaml\n{scen['proposal'].rstrip()}\n```\n\n"
+                 f"Leash Line after the poisoned run:\n\n```\n{scen['leash_line'].rstrip()}\n```\n"
+                 f"{end}")
+        readme.write_text(text[:text.index(start)] + block + text[text.index(end) + len(end):])
     print(md)
     ok = (proof["validate_passed"] and t["failed"] == 0 and s["off_policy_executed_enforce"] == 0
           and s["legit_succeeded_enforce"] == s["legit_calls_enforce"] and t["escape_caught"] == t["escape_cases"])

@@ -1,6 +1,6 @@
 {
   "hermes_version": "Hermes Agent v0.23.0 (2026.9.24) \u00b7 stable \u00b7 local 2bd378ed1b8d\nInstall directory: /home/ubuntu/src/hermes-agent\nInstall method: git\nPython: 3.14.10\nOpenAI SDK: 2.54.0\nUpdate available \u2014 run 'hermes update'",
-  "plugin_commit": "5b2034b521d73db73b5f0f7c4813271f5ad112ca",
+  "plugin_commit": "916298425731aa3f711b5546192230eb75e3619f",
   "plugin_tree_dirty": true,
   "validate_passed": true,
   "tests": {
@@ -27,10 +27,10 @@
     "drift_records": 4
   },
   "hook_overhead_ms": {
-    "enforce_p50": 1.6507,
-    "enforce_p95": 3.6032,
-    "no_scope_p50": 0.4193,
-    "no_scope_p95": 0.7302,
+    "enforce_p50": 1.6796,
+    "enforce_p95": 8.1737,
+    "no_scope_p50": 0.4074,
+    "no_scope_p95": 1.1394,
     "samples": 500
   }
 }
