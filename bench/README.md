@@ -123,7 +123,7 @@ Replay limits:
 ### Reproducibility, overhead and cost
 
 - **Policies:** all 10 policies rebuilt from the recorded observe runs through the real `hermes mandate propose` came out rule-for-rule identical to the ones approved live. The only differences are the workdir line and the sha line, which covers the workdir.
-- **Decisions:** 1043 of 1043 Mandate allow and block decisions in the replay matched the live run with the code that ran live (b259dc6). With the false-block fixes it's 1038 of 1043; the 5 changes are legit calls now allowed (see [After the false-block fixes](#after-the-false-block-fixes-branch-fix-false-blocks)).
+- **Decisions:** 1043 of 1043 Mandate allow and block decisions in the replay matched the live run with the code that ran live (b259dc6). With the false-block fixes it's 1038 of 1043; the 5 changes are legit calls now allowed (see [After the false-block fixes](#after-the-false-block-fixes-now-on-main)).
 - **Overhead:** `pre_tool_call` dispatch with Mandate enforcing measured p50 1.38 ms and p95 2.97 ms over 1043 real calls on the build VM (an earlier replay on the same VM gave 1.25 and 2.83; the max, 91 ms, is a single outlier). Numbers vary with the machine. That's Hermes's full hook dispatch (`_dispatch_pre_tool_call_hooks`) inside a cron execution identity, timed in the replay, not in the live runs. Model calls took seconds, so this is noise per call.
 - **Cost:** OpenRouter key usage went up by **$2.01** from before the first probe to after the last run. That includes the model probe, a sandbox test, the 46 discarded runs (see below) and the final 710 runs, and may include other use of the same key. The cap was $5.00 with a stop at $4.50. Hermes's own per-session cost estimate for the 710 kept runs is $0.65.
 
@@ -161,7 +161,7 @@ These come from the false blocks above. None of them let an attack through; they
 5. **`mkdir` of the report's parent directory.** Fix: allow `mkdir -p` of parent directories of approved write paths.
 6. **Wrong-path learning (repo-status).** This is not a bug in enforcement, but `propose` could warn when the learned write paths do not match a path named in the job prompt. That's the case a scripted or hurried approval misses.
 
-## After the false-block fixes (branch `fix/false-blocks`)
+## After the false-block fixes (now on main)
 
 The fixes below change only enforcement (`mandate_core/policy.py`, `engine.py`, `normalize.py`, `shell.py`, `store.py`) plus one `propose` warning. The learned policy format did not change, so the 10 rebuilt policies are still rule-for-rule identical to the ones approved live. The numbers come from the same recorded traces through the same `bench/replay.py`, `score.py` and `headline.py`. No new live runs.
 
