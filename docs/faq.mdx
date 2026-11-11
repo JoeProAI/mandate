@@ -1,0 +1,47 @@
+---
+title: "FAQ"
+description: "Short answers about scope, rivals, approvals, data, and proof."
+keywords: ["FAQ", "cron", "observe", "approve", "Hermes Guard"]
+---
+
+<AccordionGroup>
+  <Accordion title="Does Mandate change Hermes itself?">
+    No. It is a standalone plugin. It registers `pre_tool_call` and `post_tool_call`, a CLI, a slash command, and a read-only tool. It does not patch Hermes, wrap binaries, or edit Hermes config.
+  </Accordion>
+
+  <Accordion title="Does this fix the open Hermes cron_mode bugs?">
+    No. Issues [\#20984](https://github.com/NousResearch/hermes-agent/issues/20984), [\#60505](https://github.com/NousResearch/hermes-agent/issues/60505), [\#144434](https://github.com/NousResearch/hermes-agent/issues/144434), [\#83626](https://github.com/NousResearch/hermes-agent/issues/83626), and [\#58673](https://github.com/NousResearch/hermes-agent/issues/58673) are still open in Hermes. Mandate works around the same unattended-job risk in the plugin hook. Cron violations are always blocked, and Mandate never returns `approve` from a cron run.
+  </Accordion>
+
+  <Accordion title="How is this different from Hermes Guard or agent-security-guard?">
+    Those plugins use hand-written fixed pattern lists. Mandate learns a per-job policy from observed runs, then a human approves it. They solve different problems and can run together. See [Why this exists](/#how-it-is-different).
+  </Accordion>
+
+  <Accordion title="Why do I have to wait for three runs?">
+    `propose` works after one run, but it warns under 3. The compiler's `MIN_RUNS` is 3, because a single run is a thin sample. Review a short-run proposal carefully before approving it.
+  </Accordion>
+
+  <Accordion title="Does observe mode ever block?">
+    No. Observe records calls and, if a policy is already approved, marks what would have been blocked. Internal errors in observe mode also do not block. Enforce is the only mode that blocks.
+  </Accordion>
+
+  <Accordion title="Can I approve from a script?">
+    Yes, with `--yes`. Without a TTY, `approve` refuses unless `--yes` is passed, so a cron job cannot approve its own mandate.
+  </Accordion>
+
+  <Accordion title="Are interactive chats covered automatically?">
+    No. Only after `/mandate scope <job>`. Cron runs are covered automatically through the cron execution identity.
+  </Accordion>
+
+  <Accordion title="Where is my data, and does Mandate call home?">
+    Everything stays in `<HERMES_HOME>/plugin-data/mandate/mandate.db` (or `MANDATE_DB`). The plugin never opens a socket, uses no credentials, and sends no telemetry. Disable and delete that directory to remove it. See [Configuration](/configuration).
+  </Accordion>
+
+  <Accordion title="Is this a sandbox?">
+    No. It checks tool arguments before the tool runs. It cannot see what an allowed program does afterward, and it cannot catch a symlink swap between check and use. Read [Security model and limits](/security).
+  </Accordion>
+
+  <Accordion title="How do I rerun the proof the README cites?">
+    `make prove` or `make prove HERMES_TAG=v0.23.1`. CI runs both tags. See [Proof](/proof).
+  </Accordion>
+</AccordionGroup>

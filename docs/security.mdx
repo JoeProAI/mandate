@@ -1,0 +1,49 @@
+---
+title: "Security model and limits"
+description: "What Mandate enforces, how it decides, the threat model, and the known limits, stated honestly."
+keywords: ["threat model", "fail closed", "known limits", "sandbox", "cron_mode"]
+---
+
+<Frame className="mandate-plate">
+  <img src="/images/section-security.webp" alt="An orange leash anchored to a steel ring bolted beside a chain-link fence, in fog." />
+</Frame>
+
+Mandate limits what a compromised or confused agent can do inside a cron job's tool calls. It is not a sandbox.
+
+## How enforcement decides
+
+- **Shell.** Every segment of `;`, `&&`, `||`, `|`, `&`, and newline chains is checked on its own. Command substitution, backticks, `eval`, `bash -c`, `sh -c`, pipes into a shell, `python -c` and other inline interpreters, `xargs`, `sudo`, `timeout`, `find -exec`, heredocs, subshells, variable or brace expansion, and anything unparseable are refused unless that exact segment is allowed with an `=` rule. `env X=1 cmd` is unwrapped and `X` must be allowed. Redirect targets are writes.
+- **Paths.** Resolved with `realpath` against the call's working directory, then compared to the job workdir. `../`, absolute paths, `~`, and symlinks that leave the workdir never match a relative glob.
+- **Hosts.** The parsed hostname after the last `@`, lowercased, IDNA-encoded, legacy IPv4 forms normalized, non-default ports kept. `http://allowed.com@evil.com` is `evil.com`.
+- **Unknown tools.** MCP or other plugins are refused in enforce mode and recorded. `mandate_status` is exempt.
+- **Cron.** Always `block`. Nobody is there to approve, and Mandate never returns `approve` from a cron run, so `approvals.cron_mode` cannot turn a violation into an approval.
+- **Interactive scopes.** May escalate to the normal Hermes approval prompt when `interactive_violation` is `approve`. Mandate never approves anything itself and never rewrites arguments.
+- **Fail-closed.** If Mandate errors while a job is in enforce mode, or it cannot tell the mode on a cron run, the call is blocked. A changed policy whose sha256 no longer matches its approval is blocked too. Observe mode never blocks. Interactive sessions with no bound scope are left alone, including when identity lookup fails and Mandate can see it is not cron.
+
+The block message names the job, run, mandate version and hash, the call, each failed rule, the drift id, and the widen command. On cron it also tells the model to finish the parts of the task the mandate allows and to call `mandate_status`.
+
+## Threat model and known limits
+
+These are the limits the plugin itself documents. They are also listed under `known_issues` in `catalog/mandate.yaml`.
+
+- It sees tool arguments, not what a program does once it runs. An allowed `curl` that follows a redirect, or an allowed `make test` whose Makefile changed, is outside its view.
+- Tools with opaque arguments (`execute_code`, unknown MCP tools) can only be allowed or refused whole. Inline code is stored as a sha256, never as text.
+- Interactive sessions are only covered after `/mandate scope <job>`. Other interactive sessions are not affected.
+- Path checks resolve symlinks at decision time. A symlink swapped between check and use is not caught.
+- Observed workloads that vary a lot (new file names every run) produce broader globs. Review proposals.
+- Rules learned from a run that was already compromised would allow that behaviour. Observe on clean runs and read the proposal before approving.
+- Commands that hide their intent (`bash -c`, `eval`, `python -c`, pipes into `sh`) are blocked unless allowed verbatim.
+
+## Disclosures
+
+- No outbound network access. The plugin never opens a socket. The optional Desktop page reads through two read-only GET routes that Hermes itself serves under `/api/plugins/mandate/`.
+- Reads and writes only its own data dir: `<HERMES_HOME>/plugin-data/mandate/mandate.db`.
+- Runs no shell commands and starts no background processes or threads.
+- Uses no credentials and sends no telemetry.
+- Stores call shapes, not file contents. Raw argument values are redacted (tokens, keys, passwords, URL credentials) and truncated.
+- In enforce mode it blocks tool calls, including when it fails internally.
+- Stdlib only, no runtime dependencies.
+
+## What this does not fix
+
+Open Hermes issues such as [\#20984](https://github.com/NousResearch/hermes-agent/issues/20984), [\#60505](https://github.com/NousResearch/hermes-agent/issues/60505), [\#144434](https://github.com/NousResearch/hermes-agent/issues/144434), [\#83626](https://github.com/NousResearch/hermes-agent/issues/83626), and [\#58673](https://github.com/NousResearch/hermes-agent/issues/58673) describe gaps in Hermes's own `cron_mode` and approval gates. Mandate works around the same unattended-job risk in the plugin hook. It does not patch Hermes, and it cannot constrain a tool after that tool has started running.

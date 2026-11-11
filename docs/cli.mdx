@@ -1,0 +1,55 @@
+---
+title: "CLI and slash commands"
+description: "Every hermes mandate subcommand, the /mandate slash command, and the mandate_status tool, generated from the plugin source."
+keywords: ["CLI", "hermes mandate", "/mandate", "mandate_status", "slash command"]
+---
+
+The plugin registers a `hermes mandate` CLI group, a `/mandate` slash command, and a read-only `mandate_status` tool. The lists below match `mandate_core/cli.py`, `mandate_core/plugin.py`, and `mandate_core/tool.py` at the current checkout. There is also a standalone entry, `python -m mandate_core.cli`, that uses the same store but reports hooks as unregistered.
+
+If you call `hermes mandate` with no subcommand, it prints usage and exits 2. Unknown jobs print to stderr and exit 1: run `watch` or `list` first.
+
+## `hermes mandate`
+
+| Command | What it does |
+|---|---|
+| `watch <job>` | Start observing a job, by cron job name or id. Creates a `name:<job>` placeholder if the job has not run yet. Sets `watched` and mode `observe`. Never blocks. |
+| `list` | Known jobs, with mode (or the default mode), active version, run count, and id. |
+| `propose <job>` | Compile observations into a pending mandate and print it. Warns if fewer than 3 runs were observed, but still proposes. No-ops with an "unchanged" note if the YAML hash already matches the current pending or active mandate. Errors if there are no observed calls. |
+| `approve <job> [--yes] [--observe]` | Show a unified diff, ask `y/N`, store the approval and sha256, then switch to enforce. `--observe` keeps the job in observe mode. Refuses without a TTY unless `--yes`. Errors if nothing is pending. |
+| `undo <job>` | Reactivate the previously approved version, or return to observe with no mandate if there was none. |
+| `drift <job>` | List blocked or escalated calls: id, time, run, family, status, redacted call, reason. Newest first. |
+| `widen <job> <drift-id> [--pattern]` | Propose a new pending version that allows that drift record. `--pattern` uses a broader rule and previews which past calls it would newly allow. Still needs `approve`. Errors if the drift id or a base mandate is missing. If the call is already allowed by the current base, it says so and exits 0. |
+| `status <job> [--no-color]` | Print the Leash Line. `--no-color` forces the plain-text fallback. |
+| `export <job> [--json]` | Print the active mandate as YAML, or as JSON with version, sha256, job, families, and `max_writes_per_run`. Errors if the job has no approved mandate. |
+| `enforce <job>` | Switch a job to enforce. Errors if there is no approved mandate. |
+| `observe <job>` | Switch a job back to observe. Nothing will be blocked. |
+| `doctor` | Check that the database is readable and writable, that each active mandate's sha256 matches its YAML, that `pre_tool_call` and `post_tool_call` are registered, and print the default mode. Unattended violations are always `block`. Exit 0 if every check passed, 1 otherwise. |
+
+`<job>` can be the cron job name or the job id.
+
+## `/mandate` slash command
+
+Registered as `/mandate` with args hint `[status|drift|scope <job>|unscope] [job]`. Output is always plain text (no color).
+
+| Invocation | What it does |
+|---|---|
+| `/mandate` or `/mandate status` | Leash Line for the scoped job, or an error listing known jobs if none is selected. |
+| `/mandate status <job>` | Leash Line for that job. |
+| `/mandate drift` or `/mandate drift <job>` | Drift inbox for the scoped job or the named job. |
+| `/mandate scope <job>` | Bind the current chat session to that job's mandate. If the job is unknown, this also starts watching it. Needs a session id (Hermes provides one in chat). |
+| `/mandate unscope` | Clear the session binding. Later interactive calls in that chat are not enforced. |
+
+Interactive sessions are only covered after `/mandate scope <job>`. Cron runs do not need this. They are identified through `ctx.current_cron_execution()`.
+
+## `mandate_status` tool
+
+A read-only tool the agent can call. Schema name: `mandate_status`. Optional argument: `job` (id or name). Defaults to the current job. It is in `EXEMPT_TOOLS`, so Mandate does not enforce or record the tool against the policy.
+
+The handler returns JSON with:
+
+- `job`, `mode`, `enforcing` (true only when mode is enforce and an approved mandate exists)
+- `version`, `sha256`, `mandate_yaml` (or null)
+- `blocked_this_run`: up to 10 drift records for the current run when a scope is bound, otherwise recent drift for the job, each with `drift_id`, `call`, `rule`, and `reason`
+- `advice` telling the model to finish the allowed work and leave widening to a human
+
+If no job is bound: `{"mandate": null, "message": "No Mandate job is bound to this run. Nothing is enforced."}`. Internal failures return a short JSON error, without a traceback.

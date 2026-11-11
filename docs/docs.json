@@ -1,0 +1,141 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "maple",
+  "name": "Mandate",
+  "description": "Learned least-privilege for unattended Hermes jobs.",
+  "colors": {
+    "primary": "#C0280A",
+    "light": "#FF3D24",
+    "dark": "#C0280A"
+  },
+  "appearance": {
+    "default": "dark",
+    "strict": false
+  },
+  "background": {
+    "color": {
+      "light": "#DDF1E8",
+      "dark": "#081218"
+    }
+  },
+  "logo": {
+    "light": "/images/logo-light.svg",
+    "dark": "/images/logo-dark.svg",
+    "href": "/"
+  },
+  "favicon": "/images/favicon.svg",
+  "fonts": {
+    "heading": {
+      "family": "Anybody",
+      "weight": 800
+    },
+    "body": {
+      "family": "Host Grotesk",
+      "weight": 400
+    }
+  },
+  "icons": {
+    "library": "lucide"
+  },
+  "navbar": {
+    "links": [
+      {
+        "type": "github",
+        "href": "https://github.com/JoeProAI/mandate"
+      },
+      {
+        "label": "Hermes",
+        "href": "https://github.com/NousResearch/hermes-agent"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Quickstart",
+      "href": "/quickstart"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/JoeProAI/mandate",
+      "website": "https://nousresearch.com"
+    },
+    "links": [
+      {
+        "header": "Mandate",
+        "items": [
+          {
+            "label": "GitHub",
+            "href": "https://github.com/JoeProAI/mandate"
+          },
+          {
+            "label": "Quickstart",
+            "href": "/quickstart"
+          },
+          {
+            "label": "Proof",
+            "href": "/proof"
+          }
+        ]
+      },
+      {
+        "header": "Nous Research",
+        "items": [
+          {
+            "label": "Nous Research",
+            "href": "https://nousresearch.com"
+          },
+          {
+            "label": "Hermes Agent",
+            "href": "https://github.com/NousResearch/hermes-agent"
+          },
+          {
+            "label": "Built on Hermes",
+            "href": "/nous"
+          }
+        ]
+      }
+    ]
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get started",
+        "pages": [
+          "index",
+          "quickstart",
+          "concepts"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "cli",
+          "configuration",
+          "proof"
+        ]
+      },
+      {
+        "group": "About",
+        "pages": [
+          "security",
+          "faq",
+          "nous"
+        ]
+      }
+    ]
+  },
+  "styling": {
+    "eyebrows": "breadcrumbs",
+    "codeblocks": {
+      "theme": {
+        "light": "vitesse-light",
+        "dark": "vitesse-black"
+      }
+    }
+  },
+  "thumbnails": {
+    "preset": "headline",
+    "appearance": "dark",
+    "background": "/images/thumb-bg.jpg"
+  }
+}

@@ -1,12 +1,16 @@
 # Mandate
 
+![Mandate: a leash for unattended Hermes jobs. Demo run 4: 0 of 4 off-mandate calls ran, 7 of 7 legit calls finished.](assets/hero-1600x800.png)
+
 Learned least-privilege for unattended Hermes jobs.
 
-![Leash Line from hermes mandate status nightly-triage after the poisoned demo run: tools, paths, commands, hosts tracks with blocked-call notches #1 to #4](demo/leash-line.png)
+Built on [Hermes](https://github.com/NousResearch/hermes-agent) by [Nous Research](https://nousresearch.com). Thanks to Nous for the Hermes Agent Plugin Hackathon.
 
-Real render of `hermes mandate status nightly-triage` right after the poisoned run in `demo/run_demo.sh`
-(regenerate with `python3 demo/capture_leash_line.py`). The policy is enforcing, so there is no pending
-(#F5C542) band in this frame. The no-color text version is under [Results](#results).
+Docs: [mandate-db2d83af-26675499.mintlify.site](https://mandate-db2d83af-26675499.mintlify.site)
+
+![Leash Line for nightly-triage, mandate v1, demo data](assets/leash-line@2x.png)
+
+Drawn Leash Line from the poisoned demo run in `demo/run_demo.sh`, labeled as demo data. The policy is enforcing in this frame. The no-color text version is under [Results](#results).
 
 A Hermes cron job that "triages my repo issues" gets the whole terminal and file toolset, with any
 argument, every night, with nobody watching. Mandate watches what the job actually does, turns that into
@@ -20,6 +24,20 @@ inbox you can review and widen. Think AppArmor's "complain, then enforce", per c
 - Hermes v0.23.0: 41.4 s warm (Hermes already installed); 51.3 s cold (fresh Hermes clone and install)
 - Hermes v0.23.1: 56.3 s warm (Hermes already installed); 51.6 s cold (fresh Hermes clone and install)
 <!-- runtime:end -->
+
+## Why this exists
+
+Hermes users have asked for a way to restrict unattended cron jobs, and several open bugs show that Hermes's own `cron_mode: deny` can be bypassed or ignored. These titles were verified against the live issues on 10 Nov 2026:
+
+- [#20984](https://github.com/NousResearch/hermes-agent/issues/20984) (open): *feat: add cron_mode: allowlist to restrict cron jobs to command_allowlist only.* A feature request for a cron-only allowlist so a job cannot use the rest of the toolset.
+- [#60505](https://github.com/NousResearch/hermes-agent/issues/60505) (open): *Approval gate: fail-closed option for non-interactive contexts + permanent allowlist bypasses cron_mode deny.* No fail-closed path for unattended runs, and a permanent allowlist can bypass `cron_mode: deny`.
+- [#144434](https://github.com/NousResearch/hermes-agent/issues/144434) (open): *[Bug]: command_allowlist (Always Allow) also exempts commands in cron runs with cron_mode: deny.* "Always Allow" still applies during cron, even when cron mode is deny.
+- [#83626](https://github.com/NousResearch/hermes-agent/issues/83626) (open): *Cron command guards ignore cron_mode when HERMES_EXEC_ASK is inherited.* Inherited ask settings can make the cron guards ignore the configured cron mode.
+- [#58673](https://github.com/NousResearch/hermes-agent/issues/58673) (open): *[Bug]: approvals.cron_mode: deny never applies to gateway-hosted cron/kanban sessions — each gated call blocks for approvals.gateway_timeout.* Gateway-hosted cron and kanban sessions do not get deny; they wait out the gateway timeout instead.
+
+Mandate does not patch those Hermes bugs. It addresses the same pain from the plugin side: each job gets its own policy, cron violations are always blocked, and Mandate never returns `approve` from a cron run, so `approvals.cron_mode` cannot turn a violation into an approval.
+
+Rivals such as Hermes Guard and agent-security-guard use hand-written fixed pattern lists. Mandate learns a per-job policy from observed runs, then a human approves it.
 
 ## How it compares
 
@@ -244,8 +262,9 @@ scripts/live_demo.sh  # live run through Hermes cron with a real model: needs yo
 ## How this was built
 
 AI-assisted: written by Devin (Cognition) from a brief by Grok Bot for Joe Gaither. All code is new since
-Nov 5, 2026, built and tested against Hermes Agent v0.23.0. Milestones landed as PRs #1 to #6 in this repo.
-API surprises and design notes are in [NOTES.md](NOTES.md).
+Nov 5, 2026, built and tested against Hermes Agent v0.23.0 and v0.23.1. Milestones landed as PRs #1 to #8
+in this repo. API surprises and design notes are in [NOTES.md](NOTES.md). Full docs are at
+[mandate-db2d83af-26675499.mintlify.site](https://mandate-db2d83af-26675499.mintlify.site).
 
 ## License
 

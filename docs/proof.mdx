@@ -1,0 +1,60 @@
+---
+title: "Proof"
+description: "How to rerun make prove, the CI matrix on Hermes v0.23.0 and v0.23.1, and the numbers from the last proof pack."
+keywords: ["make prove", "CI", "Hermes v0.23.0", "Hermes v0.23.1", "tests", "benchmark"]
+---
+
+<Frame className="mandate-plate">
+  <img src="/images/section-proof.webp" alt="An orange leash coiled on a hook beside a clipboard under a work lamp, at night." />
+</Frame>
+
+The public proof is `make prove`. It pins a Hermes release, runs `hermes plugins validate . --install-deps`, runs the full pytest suite, runs a real-Hermes integration scenario, and writes `proof/proof.json` plus `proof/PROOF.md`.
+
+```bash
+make prove                    # pinned Hermes v0.23.0
+make prove HERMES_TAG=v0.23.1 # same on Hermes v0.23.1
+make prove-all                # both releases, one after the other
+./demo/run_demo.sh            # deterministic 90-second story, for screen recording (DEMO_PAUSE=0 to skip pauses)
+scripts/live_demo.sh          # live run through Hermes cron with a real model: needs your own configured model key
+```
+
+`scripts/live_demo.sh` needs a model key you already configured for Hermes. Do not paste keys into the repo or the docs.
+
+## CI matrix
+
+[`.github/workflows/ci.yml`](https://github.com/JoeProAI/mandate/blob/main/.github/workflows/ci.yml) runs on every push to `main` and on every pull request. The matrix is Hermes `v0.23.0` and `v0.23.1`, `fail-fast: false`. Each cell installs that tagged Hermes, validates the plugin, installs `react-dom` for the Desktop page render test, and runs pytest.
+
+## Last proof pack
+
+Numbers below are from `proof/proof.json` and `proof/PROOF.md` on current `main`. The scenario loads Mandate through Hermes's own plugin loader, binds real cron execution identities for `nightly-triage`, and sends each call through `model_tools.handle_function_call`, so the real `pre_tool_call` path decides. Legit calls really run in a throwaway git repo with a fake HOME.
+
+| Item | Hermes v0.23.0 | Hermes v0.23.1 |
+|---|---|---|
+| `hermes plugins validate` | passed | passed |
+| Tests | 112 passed, 0 failed, 0 skipped | 112 passed, 0 failed, 0 skipped |
+| Escape cases caught | 73/73 | 73/73 |
+| Observe runs (blocked calls) | 3 (0) | 3 (0) |
+| Off-policy calls executed, observe only | 4/4 | 4/4 |
+| Off-policy calls executed, enforce | 0/4 | 0/4 |
+| Legit calls succeeded, enforce | 7/7 | 7/7 |
+| Drift records | 4 | 4 |
+| Cron-visible block reason | yes | yes |
+| SSH key canary leaked (enforce) | no | no |
+| `build/` intact (enforce) | yes | yes |
+| `pre_tool_call` enforcing, p50 / p95 | 1.4507 ms / 1.9858 ms (500 samples) | 1.6983 ms / 2.1539 ms (500 samples) |
+| `pre_tool_call` no job scope, p50 / p95 | 0.4088 ms / 0.6148 ms | 0.4082 ms / 0.5771 ms |
+| `make prove` wall clock | 33.7 s warm, 51.3 s cold | 36.3 s warm, 51.6 s cold |
+
+Warm means Hermes for that tag was already installed. Cold means the run cloned and installed it. Times were measured on the build VM that generated the proof pack.
+
+The proposal from those 3 observed runs has 4 tools, 2 read paths, 1 write path, 4 commands, and `max_writes_per_run: 1`. The YAML comment counts that as 12 rules (`Policy.rule_count()`, including the write budget). `proof.json`'s `proposal_rules` field is 11, because it counts only lines with a `# seen` comment and skips the write budget.
+
+<Frame>
+  <img src="/images/leash-line.png" alt="Leash Line after the poisoned proof run, with four blocked-call notches." />
+</Frame>
+
+<Frame>
+  <img src="/images/video-theme.webp" alt="Still from the demo capture, run 4, in the Night Yard terminal theme: four blocked calls and the Leash Line." />
+</Frame>
+
+Details, the full proposal YAML, and the drift inbox after the poisoned run are in [`proof/PROOF.md`](https://github.com/JoeProAI/mandate/blob/main/proof/PROOF.md).
