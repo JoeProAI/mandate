@@ -1,12 +1,12 @@
 {
   "hermes_tag": "v0.23.1",
   "hermes_version": "Hermes Agent v0.23.1 (2026.9.24) \u00b7 stable \u00b7 local 3b4215785882",
-  "plugin_commit": "7712fd9e70edcfbd5dbc5f09d876a17110ca07aa",
+  "plugin_commit": "2edefccfcf7dafb432260592a879d06d2fee7607",
   "plugin_tree_dirty": false,
   "validate_passed": true,
   "tests": {
-    "total": 112,
-    "passed": 112,
+    "total": 122,
+    "passed": 122,
     "failed": 0,
     "skipped": 0,
     "escape_cases": 73,
@@ -28,10 +28,10 @@
     "drift_records": 4
   },
   "hook_overhead_ms": {
-    "enforce_p50": 1.6983,
-    "enforce_p95": 2.1539,
-    "no_scope_p50": 0.4082,
-    "no_scope_p95": 0.5771,
+    "enforce_p50": 1.4593,
+    "enforce_p95": 2.2967,
+    "no_scope_p50": 0.4428,
+    "no_scope_p95": 0.5808,
     "samples": 500
   },
   "prove_seconds": {
@@ -40,8 +40,8 @@
       "plugin_commit": "7712fd9e70edcfbd5dbc5f09d876a17110ca07aa"
     },
     "warm": {
-      "seconds": 36.3,
-      "plugin_commit": "7712fd9e70edcfbd5dbc5f09d876a17110ca07aa"
+      "seconds": 56.3,
+      "plugin_commit": "2edefccfcf7dafb432260592a879d06d2fee7607"
     }
   }
 }

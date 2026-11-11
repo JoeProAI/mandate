@@ -17,8 +17,8 @@ inbox you can review and widen. Think AppArmor's "complain, then enforce", per c
 <!-- runtime:start -->
 `make prove` wall clock on the build VM (validate, full pytest, real-Hermes scenario, hook benchmark; from [proof/proof.json](proof/proof.json)):
 
-- Hermes v0.23.0: 33.7 s warm (Hermes already installed); 51.3 s cold (fresh Hermes clone and install)
-- Hermes v0.23.1: 36.3 s warm (Hermes already installed); 51.6 s cold (fresh Hermes clone and install)
+- Hermes v0.23.0: 41.4 s warm (Hermes already installed); 51.3 s cold (fresh Hermes clone and install)
+- Hermes v0.23.1: 56.3 s warm (Hermes already installed); 51.6 s cold (fresh Hermes clone and install)
 <!-- runtime:end -->
 
 ## How it compares
@@ -53,8 +53,8 @@ From the last `make prove` run (real Hermes loader, real cron execution identity
 details in [proof/PROOF.md](proof/PROOF.md), raw numbers in [proof/proof.json](proof/proof.json)):
 
 <!-- proof:start -->
-- Hermes v0.23.0: validate passed; tests 112 passed, 0 failed; escape cases caught 73/73; off-policy calls executed 4/4 in observe mode, 0/4 with Mandate enforcing; legit calls succeeded while enforcing 7/7; `pre_tool_call` with Mandate enforcing p50 1.4507 ms, p95 1.9858 ms; `make prove` 33.7 s warm (Hermes already installed); 51.3 s cold (fresh Hermes clone and install)
-- Hermes v0.23.1: validate passed; tests 112 passed, 0 failed; escape cases caught 73/73; off-policy calls executed 4/4 in observe mode, 0/4 with Mandate enforcing; legit calls succeeded while enforcing 7/7; `pre_tool_call` with Mandate enforcing p50 1.6983 ms, p95 2.1539 ms; `make prove` 36.3 s warm (Hermes already installed); 51.6 s cold (fresh Hermes clone and install)
+- Hermes v0.23.0: validate passed; tests 122 passed, 0 failed; escape cases caught 73/73; off-policy calls executed 4/4 in observe mode, 0/4 with Mandate enforcing; legit calls succeeded while enforcing 7/7; `pre_tool_call` with Mandate enforcing p50 1.4261 ms, p95 2.1519 ms; `make prove` 41.4 s warm (Hermes already installed); 51.3 s cold (fresh Hermes clone and install)
+- Hermes v0.23.1: validate passed; tests 122 passed, 0 failed; escape cases caught 73/73; off-policy calls executed 4/4 in observe mode, 0/4 with Mandate enforcing; legit calls succeeded while enforcing 7/7; `pre_tool_call` with Mandate enforcing p50 1.4593 ms, p95 2.2967 ms; `make prove` 56.3 s warm (Hermes already installed); 51.6 s cold (fresh Hermes clone and install)
 
 Proposal after 3 observed runs (Hermes v0.23.1; the workdir is the scenario's throwaway repo):
 
@@ -63,7 +63,7 @@ Proposal after 3 observed runs (Hermes v0.23.1; the workdir is the scenario's th
 # Review every rule. Nothing is enforced until `hermes mandate approve`.
 mandate: 1
 job: "nightly-triage"
-workdir: "/tmp/mandate-int-lplnjq5_/repo"
+workdir: "/tmp/mandate-int-pacet6kn/repo"
 observed_runs: 3
 tools:
   - "read_file"  # seen 3x
@@ -84,14 +84,14 @@ commands:
 hosts: []
 limits:
   max_writes_per_run: 1
-# proposed v1 sha256:c42f9e67f970  (12 rules from 3 run(s))
+# proposed v1 sha256:e4727ae77aaa  (12 rules from 3 run(s))
 # next: hermes mandate approve nightly-triage
 ```
 
 Leash Line after the poisoned run, no-color fallback:
 
 ```
-MANDATE ▸ nightly-triage  v1 sha256:c42f9e67f970  ENFORCING
+MANDATE ▸ nightly-triage  v1 sha256:e4727ae77aaa  ENFORCING
   tools    ▕▃▃▃▃██▃▃┃ 4 allowed
   paths    ▕██▅▅▅▅──┃ ▼#2 ▼#3  3 allowed · 2 blocked
   commands ▕████████┃ ▼#1 ▼#4  4 allowed · 2 blocked
