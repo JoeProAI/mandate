@@ -1,69 +1,273 @@
 /* Mandate docs: Night Yard skin for Mintlify (theme "maple").
    Mintlify loads every .css file in the content directory on every page.
-   docs.json sets colors, background, fonts (Anybody / Host Grotesk) and code themes; this file adds what
-   docs.json cannot: Anybody's width axis, the mono face, tokens, plates and callout classes. */
+   docs.json sets colors, background, fonts and code themes; this file carries the identity:
+   tokens, the leash rule, the coded hero and Leash Line strip, terminal code blocks, cards, steps, callouts. */
 @import url("https://fonts.googleapis.com/css2?family=Anybody:wdth,wght@100..150,500..900&family=Cascadia+Code:wght@400..700&display=swap");
 
 :root:root {
-  /* Mintlify derives --gray-* from colors.primary; with a red-orange primary that gives warm, beige-leaning greys.
+  /* Mintlify derives --gray-* from colors.primary; a red primary gives warm, beige-leaning greys.
      Replace the whole scale with cold, mercury-tinted greys (RGB triplets, as Mintlify expects). */
   --gray-50:242 250 246; --gray-100:228 242 236; --gray-200:201 222 214; --gray-300:168 194 184; --gray-400:143 170 155;
   --gray-500:104 128 120; --gray-600:70 92 86; --gray-700:52 72 70; --gray-800:30 46 50; --gray-900:18 32 37; --gray-950:10 20 25;
 }
 :root {
   --yard-0:#DDF1E8; --yard-1:#F3FBF7; --yard-2:#C9E6DA; --fence:#9DBDB2; --fence-strong:#4E6F66;
-  --lamp:#06121A; --lamp-dim:#3A5550; --leash:#C0280A; --mercury:#006B54; --sodium:#FFD24A; --focus:#005C49;
+  --lamp:#06121A; --lamp-dim:#3A5550; --leash:#C0280A; --leash-text:#B3250A; --mercury:#006B54; --sodium:#FFD24A; --focus:#005C49;
+  --on-leash:#FFFFFF; --leash-glow:rgba(192,40,10,.28); --mercury-glow:rgba(0,107,84,.18);
+  --font-display:"Anybody","Archivo Black",system-ui,sans-serif;
   --font-mono:"Cascadia Code","JetBrains Mono","DejaVu Sans Mono",monospace;
+  --radius:4px; --ease-taut:cubic-bezier(.3,1.4,.5,1); --ease-out:cubic-bezier(.2,.8,.2,1);
 }
 html.dark {
   --yard-0:#081218; --yard-1:#0F1C22; --yard-2:#172A2F; --fence:#2C4048; --fence-strong:#5E7A76;
-  --lamp:#E2F0E4; --lamp-dim:#8FAA9B; --leash:#FF3D24; --mercury:#4BE3B4; --sodium:#FFD24A; --focus:#A8F5D6;
+  --lamp:#E2F0E4; --lamp-dim:#8FAA9B; --leash:#FF3D24; --leash-text:#FF6A52; --mercury:#4BE3B4; --sodium:#FFD24A; --focus:#A8F5D6;
+  --on-leash:#081218; --leash-glow:rgba(255,61,36,.38); --mercury-glow:rgba(75,227,180,.16);
 }
 
-/* type: wide yard-marking headings, never ALL CAPS in body */
-#page-title, .prose h1, .prose h2, h1, h2 { font-stretch:125%; letter-spacing:-0.01em; }
-#page-title { font-weight:850; line-height:1.0; }
-.prose h2 { font-weight:800; padding-top:.25rem; border-top:1px solid var(--fence); margin-top:2.75rem; }
-.prose h3 { font-stretch:112%; font-weight:700; }
-code, pre, kbd, .font-mono { font-family:var(--font-mono) !important; font-variant-ligatures:none; }
-.prose :not(pre) > code { background:var(--yard-2); color:var(--lamp); border:1px solid var(--fence); border-radius:3px; padding:.1em .35em; }
-
-/* text colors: body text is mercury-lit, links pull the leash */
-.prose a { text-decoration-color:var(--leash); text-underline-offset:3px; text-decoration-thickness:2px; }
-:focus-visible { outline:2px solid var(--focus) !important; outline-offset:2px; }
-
-/* navbar and sidebar sit on the same wet concrete, divided by chain-link hairlines */
+/* ---------- ground: true yard color everywhere, a mercury lamp in the corner, the leash across the top ---------- */
+html, body { background-color:var(--yard-0) !important; }
+html.dark body { background-image:
+  radial-gradient(70rem 40rem at 100% -10%, rgba(75,227,180,.09), transparent 60%),
+  radial-gradient(50rem 30rem at -10% 110%, rgba(255,61,36,.05), transparent 60%); background-attachment:fixed; }
+html:not(.dark) body { background-image:radial-gradient(70rem 40rem at 100% -10%, rgba(0,107,84,.10), transparent 60%); background-attachment:fixed; }
+body::before { /* the leash: one taut red line across the top of every page */
+  content:""; position:fixed; z-index:60; inset:0 0 auto 0; height:3px; pointer-events:none;
+  background:linear-gradient(90deg, var(--leash) 0 100%); box-shadow:0 0 14px var(--leash-glow); }
+#navbar, #navbar > div { background-color:transparent; }
+html.dark #navbar { background:rgba(8,18,24,.88) !important; backdrop-filter:blur(8px); }
+html:not(.dark) #navbar { background:rgba(221,241,232,.9) !important; backdrop-filter:blur(8px); }
 #navbar { border-bottom:1px solid var(--fence); }
-html.dark .prose { color:rgb(var(--gray-300)); }
-html:not(.dark) .prose { color:rgb(var(--gray-700)); }
-html.dark #navbar { background:rgba(8,18,24,.86); }
+#sidebar, #sidebar-content { background:transparent !important; }
 #sidebar { border-right:1px solid var(--fence); }
 
-/* code blocks: one yard surface for both modes; the Shiki theme only supplies token colors */
-html .code-block [data-component-part="code-block-root"], html.dark .code-block [data-component-part="code-block-root"] {
-  background-color:var(--yard-1) !important; }
-html .code-block { border:1px solid var(--fence); border-radius:4px; background-color:var(--yard-1); }
+/* ---------- type ---------- */
+#page-title, .prose h1, .prose h2, h1, h2 { font-family:var(--font-display); font-stretch:125%; letter-spacing:-0.015em; }
+#page-title { font-weight:900; font-stretch:140%; line-height:.95; font-size:clamp(2.4rem,5.4vw,3.6rem) !important;
+  color:var(--lamp) !important; word-break:normal !important; overflow-wrap:break-word !important; }
+#page-title::after { content:"."; color:var(--leash); }
+#header { padding-bottom:1.1rem; margin-bottom:.5rem; position:relative; }
+#header::after { /* leash rule under every page title: ring at the post, rope pulled taut */
+  content:""; position:absolute; left:0; right:0; bottom:0; height:3px; border-radius:2px;
+  background:linear-gradient(90deg, transparent 0 14px, var(--leash) 14px 100%);
+  box-shadow:0 0 12px var(--leash-glow); }
+#header::before { content:""; position:absolute; left:0; bottom:-5px; width:13px; height:13px; border-radius:50%;
+  border:3px solid var(--fence-strong); box-sizing:border-box; background:var(--yard-0); }
+#header .prose p { color:var(--lamp-dim); font-size:1.15rem; }
+.breadcrumb-item, [data-breadcrumb-title] { font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.14em; font-size:.72rem !important; color:var(--mercury) !important; }
+
+.prose h2 { font-weight:850; font-size:clamp(1.55rem,3vw,1.95rem); margin-top:3.25rem; padding:.15rem 0 .15rem .9rem;
+  border-left:4px solid var(--leash); line-height:1.12; color:var(--lamp); counter-increment:yard; }
+.prose { counter-reset:yard; }
+.prose h2::before { content:counter(yard, decimal-leading-zero) " / "; font-family:var(--font-mono); font-stretch:100%;
+  font-weight:600; font-size:.55em; letter-spacing:.08em; color:var(--mercury); vertical-align:.35em; margin-right:.25rem; }
+.prose h3 { font-family:var(--font-display); font-stretch:112%; font-weight:750; color:var(--lamp); }
+html.dark .prose { color:rgb(var(--gray-300)); }
+html:not(.dark) .prose { color:rgb(var(--gray-700)); }
+.prose strong { color:var(--lamp); }
+code, pre, kbd, .font-mono { font-family:var(--font-mono) !important; font-variant-ligatures:none; }
+.prose :not(pre) > code { background:var(--yard-2); color:var(--lamp); border:1px solid var(--fence); border-radius:3px; padding:.1em .35em; }
+.prose :not(pre) > code::before, .prose :not(pre) > code::after { content:none; }
+
+.prose a { color:var(--lamp); text-decoration-color:var(--leash); text-underline-offset:3px; text-decoration-thickness:2px; transition:color .12s; }
+.prose a:hover { color:var(--leash-text); }
+:focus-visible { outline:2px solid var(--focus) !important; outline-offset:2px; }
+::selection { background:var(--leash); color:var(--on-leash); }
+
+/* section divider: the leash with evidence ticks */
+.prose hr { border:0; height:14px; margin:2.75rem 0; position:relative; overflow:visible;
+  background:
+    linear-gradient(var(--leash),var(--leash)) left 50%/100% 2px no-repeat,
+    repeating-linear-gradient(90deg, var(--mercury) 0 3px, transparent 3px 22px) left 0/38% 9px no-repeat; }
+.prose hr::after { content:""; position:absolute; right:0; top:1px; width:4px; height:12px; background:var(--lamp-dim); }
+
+/* ---------- sidebar and TOC: the active item is clipped to the leash ---------- */
+#sidebar li a { border-left-width:2px !important; border-color:var(--fence) !important; transition:background .12s, color .12s; }
+#sidebar li a:hover { color:var(--lamp) !important; background:var(--mercury-glow); }
+#sidebar li[data-active-nav-item="true"] > a { border-left:3px solid var(--leash) !important; color:var(--leash-text) !important;
+  background:linear-gradient(90deg, var(--leash-glow), transparent 85%); font-weight:600; }
+#sidebar h5, #sidebar .sidebar-group-header, #sidebar-content h5 { font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.16em; font-size:.7rem; color:var(--mercury) !important; }
+#table-of-contents a[data-active="true"] { color:var(--leash-text) !important; }
+
+/* navbar button: leash-filled, dark ink in dark mode */
+#navbar a[href="/quickstart"].bg-primary-dark, #navbar a[class*="bg-primary"], #navbar [class*="bg-primary-dark"] {
+  background:var(--leash) !important; color:var(--on-leash) !important; border-radius:3px !important; font-weight:700; box-shadow:0 0 0 0 var(--leash-glow); transition:box-shadow .2s; }
+#navbar a[class*="bg-primary"]:hover { box-shadow:0 0 18px var(--leash-glow); }
+#navbar a[class*="bg-primary"] * { color:var(--on-leash) !important; }
+
+/* ---------- cards: hardware plates that glow leash-red when you reach for them ---------- */
+.card { border-radius:var(--radius) !important; background:var(--yard-1) !important; border:1px solid var(--fence) !important;
+  transition:border-color .2s, box-shadow .25s var(--ease-out), transform .25s var(--ease-out); }
+.card::before { content:""; position:absolute; inset:0 0 auto 0; height:3px; background:var(--leash); transform:scaleX(0);
+  transform-origin:left; transition:transform .35s var(--ease-taut); }
+.card:hover { border-color:var(--leash) !important; transform:translateY(-2px);
+  box-shadow:0 0 0 1px var(--leash), 0 18px 44px -16px var(--leash-glow); }
+.card:hover::before { transform:scaleX(1); }
+.card [data-component-part="card-icon"] svg { background:var(--mercury) !important; }
+.card:hover [data-component-part="card-icon"] svg { background:var(--leash) !important; }
+.card h2, .card [data-component-part="card-title"] { font-family:var(--font-display); font-stretch:118%; font-weight:800; border:0; padding:0; color:var(--lamp); }
+.card h2::before { content:none; } .card h2, .ny-hero h2 { counter-increment:none; }
+
+/* ---------- code blocks: a terminal on the yard ---------- */
+.code-block { border-radius:var(--radius) !important; border:1px solid var(--fence) !important; border-left:3px solid var(--mercury) !important;
+  background-color:var(--yard-1) !important; box-shadow:inset 0 1px 0 rgba(226,240,228,.04); }
+html.dark .code-block { background:#0A171D !important; }
+.code-block [data-component-part="code-block-root"], html.dark .code-block [data-component-part="code-block-root"] { background-color:transparent !important; }
 [data-component-part="code-block-root"] pre, [data-component-part="code-block-root"] pre code,
 [data-component-part="code-block-root"] > div { background:transparent !important; border:0 !important; }
-.prose pre { background:var(--yard-1) !important; }
+.prose pre { background:transparent !important; }
+.code-block[language="shellscript"] .line:not(:empty)::before, .code-block[language="bash"] .line:not(:empty)::before {
+  content:"$ "; color:var(--mercury); font-weight:700; }
+[data-component-part="code-group-tab-bar"], .code-group > div:first-child { background:var(--yard-2) !important; border-bottom:1px solid var(--fence) !important; }
 
-/* plates: every page opens with a graded photo plate, edge to edge in the column */
-.mandate-plate img, .mandate-plate { border-radius:4px; }
-.mandate-plate { border:1px solid var(--fence); overflow:hidden; }
+/* ---------- steps: numbered yard markers on a mercury line ---------- */
+[data-component-part="step-indicator"] { border-radius:3px !important; background:var(--yard-0) !important; border:2px solid var(--mercury);
+  color:var(--mercury) !important; font-family:var(--font-mono); font-weight:700; }
+[data-component-part="step-line"] { background:linear-gradient(var(--mercury), var(--fence)) !important; width:2px !important; }
+[data-component-part="step-title"] { font-family:var(--font-display); font-stretch:118%; font-weight:800; font-size:1.1rem; color:var(--lamp) !important; }
 
-/* allow / block / pending callouts: color plus a drawn shape, never color alone */
+/* ---------- tables and accordions ---------- */
+.prose table { border:1px solid var(--fence); border-collapse:separate; border-spacing:0; border-radius:var(--radius); overflow:hidden; }
+.prose thead th { font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.12em; font-size:.72rem; color:var(--mercury);
+  background:var(--yard-2); border-bottom:2px solid var(--leash) !important; }
+.prose td, .prose th { border-color:var(--fence) !important; }
+.prose tbody tr:hover td { background:var(--mercury-glow); }
+.accordion, details { border-radius:var(--radius) !important; border-color:var(--fence) !important; background:var(--yard-1); }
+details[open] > summary, .accordion[data-state="open"] { box-shadow:inset 3px 0 0 var(--leash); }
+summary:hover { background:var(--mercury-glow); }
+
+/* ---------- plates ---------- */
+.mandate-plate img, .mandate-plate { border-radius:var(--radius) !important; }
+.mandate-plate { border:1px solid var(--fence) !important; overflow:hidden; position:relative; box-shadow:0 0 0 1px var(--yard-0), 0 24px 50px -28px rgba(0,0,0,.7); }
+.mandate-plate::after { content:""; position:absolute; left:0; right:0; bottom:0; height:3px; background:var(--leash); box-shadow:0 0 12px var(--leash-glow); }
+[data-name="frame"], .frame { border-radius:var(--radius) !important; }
+
+/* ---------- allow / block / pending: color plus a drawn shape, never color alone ---------- */
 .call { display:flex; gap:.6rem; align-items:baseline; font-family:var(--font-mono); font-size:.875rem; line-height:1.5;
-        padding:.55rem .8rem; border:1px solid var(--fence); border-left-width:4px; border-radius:3px; background:var(--yard-1); margin:.4rem 0; }
+        padding:.55rem .8rem; border:1px solid var(--fence); border-left-width:4px; border-radius:3px; background:var(--yard-1); margin:.4rem 0; overflow-wrap:anywhere; }
 .call::before { flex:none; font-weight:700; width:1.1em; }
 .call--allow { border-left-color:var(--mercury); } .call--allow::before { content:"\2713"; color:var(--mercury); }
-.call--block { border-left-color:var(--leash); }   .call--block::before { content:"\2715"; color:var(--leash); }
-.call--pending { border-left-color:var(--sodium); border-left-style:dashed; } .call--pending::before { content:"\25C7"; color:var(--lamp); }
-.call b { font-weight:700; } .call small { color:var(--lamp-dim); }
-
-/* rule card: one mandate rule with its evidence count */
+.call--block { border-left-color:var(--leash); background:linear-gradient(90deg, var(--leash-glow), var(--yard-1) 40%); }
+.call--block::before { content:"\2715"; color:var(--leash-text); }
+.call--pending { border-left-color:var(--sodium); border-left-style:dashed; } .call--pending::before { content:"\25C7"; color:var(--sodium); }
+html:not(.dark) .call--pending::before { color:var(--lamp); }
+.call b { font-weight:700; color:var(--lamp); } .call small { color:var(--lamp-dim); }
 .rule { display:grid; grid-template-columns:auto 1fr auto; gap:.75rem; align-items:center; font-family:var(--font-mono); font-size:.875rem;
         padding:.5rem .75rem; border:1px solid var(--fence); border-radius:3px; background:var(--yard-1); }
 .rule .tick { width:6px; height:1.1rem; background:var(--mercury); border-radius:1px; }
 .rule .seen { color:var(--lamp-dim); }
 
+/* Mintlify callouts get the same grammar */
+[data-callout-type="tip"], [data-callout-type="check"], .callout-tip { border-left:4px solid var(--mercury) !important; }
+[data-callout-type="warning"], .callout-warning { border-left:4px dashed var(--sodium) !important; }
+[data-callout-type="danger"] { border-left:4px solid var(--leash) !important; }
+
+/* =====================================================================
+   HOME: coded hero (the night yard, the wordmark, the leash) and the Leash Line strip
+   ===================================================================== */
+#content-area:has(.ny-hero) #header { position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+.ny-hero { --yard-0:#081218; --lamp:#E2F0E4; --lamp-dim:#8FAA9B; --leash:#FF3D24; --mercury:#4BE3B4; --fence:#2C4048;
+  --bandh:calc(100cqi * 360 / 1600);
+  container-type:inline-size; position:relative; isolation:isolate; overflow:hidden; margin:0 0 2.5rem; border-radius:6px;
+  border:1px solid var(--fence); background:#081218; color:var(--lamp); font-family:"Host Grotesk",sans-serif; padding-bottom:1.4rem; }
+.ny-hero__sky { position:relative; padding:clamp(1.25rem,4.5cqi,3rem) clamp(1.1rem,4.5cqi,3rem) clamp(1.5rem,3cqi,2.2rem);
+  background:linear-gradient(90deg, rgba(8,18,24,.92) 0%, rgba(8,18,24,.55) 55%, rgba(8,18,24,.1) 100%),
+             linear-gradient(0deg, #081218 0%, rgba(8,18,24,0) 35%),
+             #081218 url("/images/hero-sky.webp") 100% 100%/cover no-repeat; }
+.ny-hero__sky::after { /* film grain, very low */
+  content:""; position:absolute; inset:0; opacity:.16; mix-blend-mode:overlay; pointer-events:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='.9'/></svg>"); }
+.ny-hero__sky > * { position:relative; z-index:1; }
+.ny-eyebrow { font-family:var(--font-mono); font-size:.72rem; letter-spacing:.18em; text-transform:uppercase; color:var(--mercury); margin:0 0 .5rem; }
+.ny-eyebrow b { color:var(--lamp); font-weight:600; }
+.ny-wordmark { font-family:var(--font-display) !important; font-weight:900; font-stretch:150%; letter-spacing:-0.035em; line-height:.84;
+  font-size:clamp(2.2rem, 11cqi, 8rem); margin:0 0 0 -.04em; color:var(--lamp); text-shadow:0 2px 30px rgba(0,0,0,.55); border:0 !important; padding:0 !important; white-space:nowrap; }
+.ny-wordmark span { color:var(--leash); text-shadow:0 0 28px rgba(255,61,36,.65); }
+.ny-lede { font-family:var(--font-display); font-stretch:115%; font-weight:750; font-size:clamp(1.2rem,3.4cqi,1.85rem); line-height:1.12; margin:1rem 0 .45rem; max-width:24ch; color:var(--lamp); }
+.ny-lede em { font-style:normal; color:var(--leash); }
+.ny-flow { font-family:var(--font-mono); font-size:.8rem; color:var(--lamp-dim); margin:.2rem 0 0; }
+.ny-flow .m { color:var(--mercury); } .ny-flow .r { color:#FF6A52; font-weight:700; } .ny-flow b { color:var(--lamp); }
+.ny-cta { display:flex; flex-wrap:wrap; gap:.6rem; margin-top:1.3rem; }
+.ny-btn { display:inline-flex; align-items:center; gap:.5rem; min-height:44px; padding:0 1.15rem; border-radius:3px; font-weight:700; font-size:.95rem;
+  text-decoration:none !important; transition:box-shadow .2s, transform .2s var(--ease-out), background .2s, color .2s; border:2px solid transparent; }
+.ny-btn--leash { background:#FF3D24; color:#081218 !important; }
+.ny-btn--leash:hover { box-shadow:0 0 0 4px rgba(255,61,36,.25), 0 10px 30px -6px rgba(255,61,36,.7); transform:translateY(-1px); }
+.ny-btn--mercury { border-color:#4BE3B4; color:#4BE3B4 !important; background:rgba(8,18,24,.6); }
+.ny-btn--mercury:hover { background:#4BE3B4; color:#081218 !important; }
+.ny-meta { position:absolute !important; right:clamp(1rem,3cqi,2rem); top:clamp(1rem,3cqi,1.6rem); font-family:var(--font-mono); font-size:.68rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--lamp-dim); text-align:right; line-height:1.6; }
+.ny-meta b { color:var(--mercury); font-weight:600; }
+/* the yard band: the photographed post, ring and leash at an exact aspect, so the rope sits at a known height (21%) */
+.ny-yard { position:relative; width:100%; height:var(--bandh); background:url("/images/hero-yard.webp") 0 0/100% 100% no-repeat; }
+.ny-yard::before { content:""; position:absolute; inset:0 0 auto 0; height:30%; background:linear-gradient(#081218, rgba(8,18,24,0)); }
+.ny-glow { position:absolute; left:24.4%; right:0; top:calc(21% - 1px); height:3px; background:#FF3D24; box-shadow:0 0 18px 2px rgba(255,61,36,.75);
+  transform-origin:left; animation:ny-taut .9s var(--ease-taut) .15s both; }
+.ny-tags { position:relative; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.6rem; padding:0 clamp(.8rem,2.5cqi,1.6rem) 0 26%;
+  margin-top:calc(var(--bandh) * -0.5); align-items:start; }
+.ny-tag { --cord:calc(var(--bandh) * 0.29); position:relative; margin-top:0; padding:.5rem .6rem; border:1px solid #FF3D24; border-radius:3px;
+  background:rgba(8,18,24,.9); font-family:var(--font-mono); font-size:.72rem; line-height:1.35; color:var(--lamp);
+  animation:ny-drop .55s var(--ease-taut) .5s both; overflow-wrap:anywhere; box-shadow:0 12px 24px -12px rgba(0,0,0,.8); }
+.ny-tag:nth-child(even) { --cord:calc(var(--bandh) * 0.29 + 26px); margin-top:26px; }
+.ny-tag::before { content:""; position:absolute; left:16px; bottom:100%; width:2px; height:var(--cord); background:#FF3D24; }
+.ny-tag::after { content:""; position:absolute; left:12px; top:calc(-1 * var(--cord) - 5px); width:10px; height:10px; border-radius:50%; background:#FF3D24; box-shadow:0 0 10px rgba(255,61,36,.9); }
+.ny-tag i { display:block; font-style:normal; font-size:.62rem; letter-spacing:.14em; text-transform:uppercase; color:#FF6A52; margin-bottom:.15rem; }
+.ny-tag:nth-child(2){animation-delay:.62s} .ny-tag:nth-child(3){animation-delay:.74s} .ny-tag:nth-child(4){animation-delay:.86s}
+
+/* Leash Line strip, drawn in CSS from the demo capture's numbers */
+.ny-leash { margin:2rem 0 2.5rem; border:1px solid var(--fence); border-radius:6px; background:var(--yard-1); overflow:hidden; font-family:var(--font-mono);
+  box-shadow:0 30px 60px -40px rgba(0,0,0,.6); }
+.ny-leash__bar { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem 1rem; padding:.7rem 1rem; border-bottom:1px solid var(--fence); background:var(--yard-2); font-size:.78rem; color:var(--lamp-dim); }
+.ny-leash__bar strong { font-family:var(--font-display); font-stretch:125%; font-weight:850; font-size:1rem; color:var(--lamp); letter-spacing:-.01em; }
+.ny-leash__bar strong span { color:var(--leash); }
+.ny-badge { margin-left:auto; padding:.2rem .55rem; border-radius:2px; background:var(--leash); color:var(--on-leash); font-weight:700; font-size:.7rem; letter-spacing:.14em; }
+.ny-track { display:grid; grid-template-columns:7.5rem 1fr 9.5rem; align-items:center; gap:1rem; padding:.95rem 1rem; border-bottom:1px dashed var(--fence); }
+.ny-track:last-of-type { border-bottom:0; }
+.ny-track__name { color:var(--lamp); font-weight:700; font-size:.85rem; }
+.ny-track__name small { display:block; font-weight:400; color:var(--lamp-dim); font-size:.7rem; }
+.ny-track__sum { font-size:.72rem; color:var(--lamp-dim); text-align:right; }
+.ny-track__sum .a { color:var(--mercury); } .ny-track__sum .b { color:var(--leash-text); font-weight:700; }
+.ny-rail { position:relative; height:34px; }
+.ny-rail::before { content:""; position:absolute; left:0; right:0; top:50%; height:2px; background:var(--fence-strong); }
+.ny-rail.has-block::before { background:linear-gradient(90deg, var(--fence-strong) 0 60%, var(--leash) 60% 100%); }
+.ny-rail::after { content:""; position:absolute; right:0; top:4px; width:4px; height:26px; background:var(--lamp-dim); border-radius:1px; }
+.ny-tick { position:absolute; bottom:50%; width:6px; margin-left:-3px; background:var(--mercury); border-radius:1px 1px 0 0; height:var(--h,10px);
+  box-shadow:0 0 8px var(--mercury-glow); transform-origin:bottom; animation:ny-rise .6s var(--ease-taut) both; }
+.ny-x { position:absolute; top:50%; width:20px; height:20px; margin:-10px 0 0 -10px; border-radius:2px; background:var(--leash); color:var(--on-leash);
+  display:grid; place-items:center; font-size:.72rem; font-weight:800; box-shadow:0 0 0 3px var(--yard-1), 0 0 16px var(--leash-glow); animation:ny-pop .45s var(--ease-taut) .7s both; }
+.ny-x b { position:absolute; top:22px; left:50%; transform:translateX(-50%); font-size:.62rem; color:var(--leash-text); white-space:nowrap; }
+.ny-empty { position:absolute; left:0; top:50%; transform:translateY(-50%); font-size:.7rem; color:var(--lamp-dim); background:var(--yard-1); padding-right:.5rem; }
+.ny-leash__legend { display:flex; flex-wrap:wrap; gap:.4rem 1.2rem; padding:.7rem 1rem; border-top:1px solid var(--fence); font-size:.7rem; color:var(--lamp-dim); }
+.ny-leash__legend .a::before { content:"\25AE "; color:var(--mercury); } .ny-leash__legend .b::before { content:"\2715 "; color:var(--leash-text); font-weight:700; }
+.ny-leash__legend .p::before { content:"\25C7 "; color:var(--sodium); }
+html:not(.dark) .ny-leash__legend .p::before { color:var(--lamp); }
+
+/* pillars: an asymmetric band instead of icon cards */
+.ny-pillars { display:grid; grid-template-columns:1.3fr 1fr 1fr; gap:0; margin:2rem 0; border:1px solid var(--fence); border-radius:6px; overflow:hidden; }
+.ny-pillar { padding:1.2rem 1.1rem 1.3rem; border-right:1px solid var(--fence); background:var(--yard-1); position:relative; }
+.ny-pillar:last-child { border-right:0; }
+.ny-pillar:first-child { background:linear-gradient(160deg, var(--leash-glow), var(--yard-1) 55%); }
+.ny-pillar .k { font-family:var(--font-mono); font-size:.68rem; letter-spacing:.16em; text-transform:uppercase; color:var(--mercury); }
+.ny-pillar .v { font-family:var(--font-display); font-stretch:130%; font-weight:900; font-size:clamp(1.7rem,3.4vw,2.6rem); line-height:1; color:var(--lamp); margin:.35rem 0 .45rem; }
+.ny-pillar .v span { color:var(--leash); }
+.ny-pillar p { margin:0; font-size:.9rem; line-height:1.45; color:var(--lamp-dim); }
+
+@keyframes ny-taut { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+@keyframes ny-drop { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:none; } }
+@keyframes ny-rise { from { transform:scaleY(0); } to { transform:scaleY(1); } }
+@keyframes ny-pop { from { transform:scale(0); } to { transform:scale(1); } }
+
+/* ---------- responsive ---------- */
+@media (max-width: 720px) {
+  .ny-meta { position:static !important; text-align:left; margin-bottom:.8rem; }
+  .ny-hero__sky { background-position:72% 100%; }
+  .ny-tags { grid-template-columns:1fr; gap:.45rem; padding:.2rem 1rem 0 2.2rem; margin-top:0; }
+  .ny-tags::before { content:""; position:absolute; left:1.2rem; top:calc(var(--bandh) * -0.79); bottom:1rem; width:2px; background:#FF3D24; box-shadow:0 0 8px rgba(255,61,36,.7); }
+  .ny-tag, .ny-tag:nth-child(even) { margin-top:0; }
+  .ny-tag::before { left:-1rem; bottom:auto; top:50%; width:1rem; height:2px; }
+  .ny-tag::after { display:none; }
+  .ny-track { grid-template-columns:1fr; gap:.35rem; padding:.8rem .9rem 1.4rem; }
+  .ny-track__sum { text-align:left; }
+  .ny-pillars { grid-template-columns:1fr; }
+  .ny-pillar { border-right:0; border-bottom:1px solid var(--fence); }
+  .ny-badge { margin-left:0; }
+}
 @media (prefers-reduced-motion: reduce) { * { transition:none !important; animation:none !important; } }
