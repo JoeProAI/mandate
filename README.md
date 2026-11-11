@@ -58,6 +58,8 @@ details in [proof/PROOF.md](proof/PROOF.md), raw numbers in [proof/proof.json](p
 - Hermes v0.23.0: validate passed; tests 122 passed, 0 failed; escape cases caught 73/73; off-policy calls executed 4/4 in observe mode, 0/4 with Mandate enforcing; legit calls succeeded while enforcing 7/7; `pre_tool_call` with Mandate enforcing p50 1.4261 ms, p95 2.1519 ms; `make prove` 41.4 s warm (Hermes already installed); 51.3 s cold (fresh Hermes clone and install)
 - Hermes v0.23.1: validate passed; tests 122 passed, 0 failed; escape cases caught 73/73; off-policy calls executed 4/4 in observe mode, 0/4 with Mandate enforcing; legit calls succeeded while enforcing 7/7; `pre_tool_call` with Mandate enforcing p50 1.4593 ms, p95 2.2967 ms; `make prove` 56.3 s warm (Hermes already installed); 51.6 s cold (fresh Hermes clone and install)
 
+A live run through Hermes cron with a real OpenRouter model (observe, propose, approve, then enforce) is in [proof/live-run.md](proof/live-run.md).
+
 Proposal after 3 observed runs (Hermes v0.23.1; the workdir is the scenario's throwaway repo):
 
 ```yaml
@@ -236,7 +238,7 @@ make prove            # pinned Hermes v0.23.0, validate, tests, real-Hermes scen
 make prove HERMES_TAG=v0.23.1   # same on Hermes v0.23.1
 make prove-all        # both releases, one after the other
 ./demo/run_demo.sh    # the 90-second story, deterministic, for screen recording (DEMO_PAUSE=0 to skip pauses)
-scripts/live_demo.sh  # live run through Hermes cron with a real model: needs your own configured model key
+scripts/live_demo.sh  # live run through Hermes cron with a real model: needs your own configured model key; a captured run is in proof/live-run.md
 ```
 
 ## How this was built
