@@ -4,9 +4,13 @@
 
 Learned least-privilege for unattended Hermes jobs.
 
+**Results.** Live on real Hermes v0.23.0 cron (gpt-4o-mini, published injection wrappers): Mandate blocked 29 of 29 attack calls, and 0 of 120 attack runs did harm vs 18 of 120 with Hermes defaults. Keyless replay on main: 140 of 140 attack calls blocked, 39 of 1038 legit calls falsely blocked. 162 tests pass. Details under [Results](#results) and in [bench/README.md](bench/README.md).
+
+**For judges.** `make bench` replays the recorded real-model traffic through real Hermes dispatch (free, no API key). `make prove` installs pinned Hermes and runs validate, the full tests and a real-Hermes cron scenario.
+
 Built on [Hermes](https://github.com/NousResearch/hermes-agent) by [Nous Research](https://nousresearch.com). Thanks to Nous for the Hermes Agent Plugin Hackathon.
 
-Docs: [mandate-db2d83af-26675499.mintlify.site](https://mandate-db2d83af-26675499.mintlify.site)
+Docs: [mandate-db2d83af.mintlify.app](https://mandate-db2d83af.mintlify.app)
 
 ![Leash Line for nightly-triage, mandate v1, demo data](assets/leash-line@2x.png)
 
@@ -268,7 +272,7 @@ scripts/live_demo.sh  # live run through Hermes cron with a real model: needs yo
 AI-assisted: written by Devin (Cognition) from a brief by Grok Bot for Joe Gaither. All code is new since
 Nov 5, 2026, built and tested against Hermes Agent v0.23.0 and v0.23.1. Milestones landed as PRs #1 to #8
 in this repo. API surprises and design notes are in [NOTES.md](NOTES.md). Full docs are at
-[mandate-db2d83af-26675499.mintlify.site](https://mandate-db2d83af-26675499.mintlify.site).
+[mandate-db2d83af.mintlify.app](https://mandate-db2d83af.mintlify.app).
 
 ## License
 
