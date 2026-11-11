@@ -11,20 +11,25 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    name: test + validate (Hermes v0.23.0)
+    name: test + validate (Hermes ${{ matrix.hermes }})
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        hermes: [v0.23.0, v0.23.1]
     env:
       UV_EXCLUDE_NEWER: "3 days"
+      HERMES_TAG: ${{ matrix.hermes }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
           version: "0.13.7"
-      - name: Install pinned Hermes Agent v0.23.0
+      - name: Install pinned Hermes Agent ${{ matrix.hermes }}
         run: ./scripts/install_hermes.sh
       - name: hermes plugins validate
         run: |
-          "$HOME/.cache/mandate-hermes/v0.23.0/.venv/bin/hermes" plugins validate . --install-deps
+          "$HOME/.cache/mandate-hermes/$HERMES_TAG/.venv/bin/hermes" plugins validate . --install-deps
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -32,4 +37,4 @@ jobs:
         run: ./scripts/install_react.sh
       - name: pytest
         run: |
-          "$HOME/.cache/mandate-hermes/v0.23.0/.venv/bin/python" -m pytest
+          "$HOME/.cache/mandate-hermes/$HERMES_TAG/.venv/bin/python" -m pytest
