@@ -33,6 +33,8 @@ class CallShape:
     hosts: list[str] = field(default_factory=list)
     write_count: int = 0
     exempt: bool = False
+    # Not serialized: a search_files call that only lists file names (target=files), never contents.
+    listing: bool = False
 
     def to_json(self) -> dict:
         return {
@@ -83,9 +85,16 @@ def _terminal(shape: CallShape, args: dict, cwd: str, root: str) -> None:
         shape.segments.append(seg)
         if seg.opaque:
             continue
+        refs = []
         for op, p in shell.path_candidates(seg):
             ref = resolve(p, cwd, root)
+            refs.append((op, ref))
             (shape.writes if op == "write" else shape.reads).append(ref)
+        # Per-segment paths, used only to widen read-only commands (policy._readonly_ok). grep-style heads
+        # take file operands after the pattern; path_candidates only sees the absolute ones, so add the rest.
+        for p in shell.grep_operands(seg):
+            refs.append(("read", resolve(p, cwd, root)))
+        seg.extra["refs"] = refs
         for url in shell.host_candidates(seg):
             shape.hosts.append(host_of(url))
         if seg.cd_target is not None:
@@ -125,6 +134,8 @@ def normalize_call(tool: str, args: Any, cwd: str, root: str | None = None) -> C
     elif tool in READ_PATH_TOOLS:
         p = args.get(READ_PATH_TOOLS[tool]) or "."
         shape.reads.append(resolve(str(p), cwd, root))
+        if tool == "search_files" and str(args.get("target") or "").lower() == "files":
+            shape.listing = True
     # Generic extraction for every tool, including unknown MCP/plugin tools.
     for key in sorted(args, key=str):
         k = str(key).lower()

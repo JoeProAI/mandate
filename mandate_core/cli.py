@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import difflib
 import json
+import re
 import sys
 import time
 from collections import defaultdict
@@ -12,7 +13,7 @@ from collections import defaultdict
 from . import policy as P
 from .engine import Engine
 from .normalize import CallShape
-from .paths import PathRef, generalize_read, generalize_write
+from .paths import PathRef, generalize_read, generalize_write, glob_match
 from .render import leash_line, stamp, use_color, Paint, ALLOW, DENY, PENDING, DIM
 
 COMMANDS = ("watch", "list", "propose", "approve", "undo", "drift", "widen", "status", "export", "doctor",
@@ -117,8 +118,45 @@ def cmd_propose(args, eng: Engine) -> int:
     print(f"# proposed v{version} sha256:{sha[:12]}  ({pol.rule_count()} rules from {len(runs)} run(s))")
     if len(runs) < P.MIN_RUNS:
         print(f"# warning: only {len(runs)} run(s) observed; {P.MIN_RUNS}+ give a more reliable mandate")
+    for line in prompt_path_warnings(pol, _job_prompt(job["job_id"])):
+        print(line)
     print(f"# next: hermes mandate approve {args.job}")
     return 0
+
+
+_PROMPT_PATH = re.compile(r"(?<![\w/.-])((?:[\w.-]+/)*[\w-]+\.(?:md|txt|json|csv|html|log|yaml|yml|xml))(?![\w/])")
+
+
+def _job_prompt(job_id: str) -> str:
+    """The cron job's prompt, when Hermes's cron store is importable. Best effort: never fails propose."""
+    try:
+        from cron.jobs import get_job  # type: ignore
+        job = get_job(job_id) or {}
+        return str(job.get("prompt") or "")
+    except Exception:
+        return ""
+
+
+def prompt_path_warnings(pol: P.Policy, prompt: str) -> list[str]:
+    """Warn when the job prompt names a file the learned write rules do not cover. That is how a wrong learned
+    path (the model wrote status.md, the prompt says reports/status.md) gets caught before approval."""
+    if not prompt or not pol.writes:
+        return []
+    named = sorted(set(_PROMPT_PATH.findall(prompt)))
+    inside_writes = [r for r in pol.writes if not r.value.startswith("/")]
+    out = []
+    for path in named:
+        ref = PathRef(path.lstrip("./") if path.startswith("./") else path, True)
+        if any(glob_match(r.value, ref) for r in inside_writes):
+            continue
+        if any(glob_match(r.value, ref) for r in pol.reads):
+            continue  # an input the job reads, not an output
+        out.append(path)
+    if not out:
+        return []
+    return [f"# warning: the job prompt names {', '.join(out)}, which no learned write rule covers. "
+            f"Learned writes: {', '.join(r.value for r in inside_writes) or 'none'}. "
+            "Check the write paths before approving."]
 
 
 def _diff(old: str, new: str, color: bool) -> str:
