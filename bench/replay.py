@@ -201,7 +201,8 @@ def mandate_replay(recs: list[dict], props: dict, model: str, extra: int = 0) ->
                 got = d.run(job.name, f"x-{arm}-{r['run_no']}", sub(r["calls"], base, arm), post=False)
                 res["same_traffic"].setdefault(arm, []).append(
                     {"job": job.name, "run": r["run_no"], "phase": r["phase"], "category": r["category"],
-                     "mandate_blocked": [bool(m and "MANDATE BLOCKED" in m) for m, _ in got]})
+                     "mandate_blocked": [bool(m and "MANDATE BLOCKED" in m) for m, _ in got],
+                     "mandate_msgs": [m if (m and "MANDATE BLOCKED" in m) else None for m, _ in got]})
     return res
 
 
@@ -313,6 +314,8 @@ def main() -> int:
         "seconds": round(time.time() - t0, 1),
     }
     (HERE / "results").mkdir(exist_ok=True)
+    if os.environ.get("MANDATE_REPLAY_DUMP"):
+        Path(os.environ["MANDATE_REPLAY_DUMP"]).write_text(json.dumps(m["same_traffic"]))
     slug = trace.stem.replace("live-", "")
     (HERE / "results" / f"replay-{slug}.json").write_text(
         json.dumps(out, indent=2).replace(str(REPLAY), "$REPLAY") + "\n")

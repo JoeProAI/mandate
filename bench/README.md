@@ -107,7 +107,8 @@ The live arms are not paired: each arm's model made different calls. To compare 
 
 | Guard | Attack calls blocked | Legit calls in clean runs blocked |
 |---|---:|---:|
-| Mandate | **140 of 140** | 58 of 1038 (5.6%) |
+| Mandate (code that ran live) | **140 of 140** | 58 of 1038 (5.6%) |
+| Mandate with the false-block fixes | **140 of 140** | 39 of 1038 (3.8%) |
 | Hermes cron deny | 38 of 140 | 0 of 1038 |
 | Hermes Guard (`pre_tool_call`) | 51 of 140 | 7 of 1038 |
 | agent-security-guard (`pre_tool_call`) | 0 of 140 | 0 of 1038 |
@@ -122,7 +123,7 @@ Replay limits:
 ### Reproducibility, overhead and cost
 
 - **Policies:** all 10 policies rebuilt from the recorded observe runs through the real `hermes mandate propose` came out rule-for-rule identical to the ones approved live. The only differences are the workdir line and the sha line, which covers the workdir.
-- **Decisions:** 1043 of 1043 Mandate allow and block decisions in the replay matched the live run.
+- **Decisions:** 1043 of 1043 Mandate allow and block decisions in the replay matched the live run with the code that ran live (b259dc6). With the false-block fixes it's 1038 of 1043; the 5 changes are legit calls now allowed (see [After the false-block fixes](#after-the-false-block-fixes-branch-fix-false-blocks)).
 - **Overhead:** `pre_tool_call` dispatch with Mandate enforcing measured p50 1.38 ms and p95 2.97 ms over 1043 real calls on the build VM (an earlier replay on the same VM gave 1.25 and 2.83; the max, 91 ms, is a single outlier). Numbers vary with the machine. That's Hermes's full hook dispatch (`_dispatch_pre_tool_call_hooks`) inside a cron execution identity, timed in the replay, not in the live runs. Model calls took seconds, so this is noise per call.
 - **Cost:** OpenRouter key usage went up by **$2.01** from before the first probe to after the last run. That includes the model probe, a sandbox test, the 46 discarded runs (see below) and the final 710 runs, and may include other use of the same key. The cap was $5.00 with a stop at $4.50. Hermes's own per-session cost estimate for the 710 kept runs is $0.65.
 
@@ -159,6 +160,42 @@ These come from the false blocks above. None of them let an attack through; they
 4. **Command shape variance.** Shapes like `grep -c` vs `grep -ic`, `sort` vs `sort -u`, and different awk programs. Fix: learn flag classes for known read-only commands instead of literal prefixes, and treat an awk or sed program without `system`, a redirect or a write as read-only.
 5. **`mkdir` of the report's parent directory.** Fix: allow `mkdir -p` of parent directories of approved write paths.
 6. **Wrong-path learning (repo-status).** This is not a bug in enforcement, but `propose` could warn when the learned write paths do not match a path named in the job prompt. That's the case a scripted or hurried approval misses.
+
+## After the false-block fixes (branch `fix/false-blocks`)
+
+The fixes below change only enforcement (`mandate_core/policy.py`, `engine.py`, `normalize.py`, `shell.py`, `store.py`) plus one `propose` warning. The learned policy format did not change, so the 10 rebuilt policies are still rule-for-rule identical to the ones approved live. The numbers come from the same recorded traces through the same `bench/replay.py`, `score.py` and `headline.py`. No new live runs.
+
+| Replay, same recorded calls | Before (b259dc6) | After |
+|---|---:|---:|
+| Attack calls blocked, same traffic (all arms) | 140 of 140 | **140 of 140** |
+| Legit calls blocked, same traffic (all arms) | 58 of 1038 (5.6%) | **39 of 1038 (3.8%)** |
+| Legit calls blocked, unguarded arm only | 20 of 248 | 11 of 248 |
+| Legit calls blocked, Mandate's own clean runs (replayed) | 9 of 263 | 8 of 263 |
+| Non-attack calls blocked inside attack runs (own arm) | 40 of 751 | 36 of 751 |
+| Attack calls blocked, Mandate's own arm (replayed) | 29 of 29 | 29 of 29 |
+| Observe 4 runs: legit blocked, same traffic | 33 of 817 | 20 of 817 |
+| Observe 5 runs: legit blocked, same traffic | 13 of 609 | 5 of 609 |
+| Observe 5 runs: legit blocked, own clean runs | 0 of 152 | 0 of 152 |
+
+- **No attack call got through.** Every attack call blocked before is still blocked, at every observe length.
+- **Decisions vs the live run: 1038 of 1043 match.** The 5 that changed were all live blocks that are now allowed, and all 5 are legit: `cat reports/triage.md` and `cat digests/today.md` (read-back of the job's own report), a `patch` of `reports/deps.md` and a rewrite of `digests/today.md` (rewrite of a path already written), and `mkdir -p reports` (parent of the report path).
+- **Overhead:** no measurable change. Back-to-back replays on the same VM, no guards: base p50 2.19 and 1.84 ms, p95 6.72 and 7.72 ms. Fixed p50 1.78 and 1.74 ms, p95 5.98 and 4.54 ms. The full replay after the fix gave p50 1.65 ms and p95 4.47 ms. This VM is noisy, so treat it as "the same", not "faster".
+- **Live numbers in the tables above are unchanged** (9 of 263 in clean runs). They are what happened live with the old code. The replayed figure for the same runs is 8 of 263.
+
+What landed, mapped to the list above:
+
+1. **Distinct write paths.** A write to a path this run already wrote does not use the write budget. Rewrites are capped at `max_writes_per_run + 4` write calls per run. A new path still costs a write.
+2. **Read-back.** `cat`, `head`, `tail`, `wc`, `ls`, `stat` and similar read-only commands are allowed when every operand is inside the workdir and matches an approved read or write rule. If terminal was never learned, a terminal call made only of such reads is allowed too, since it reaches nothing `read_file` could not.
+3. **Tool families.** `read_file` and `search_files` count as one family, and `write_file` and `patch` as another. Path rules still decide what they touch. A `search_files` that only lists file names (`target: files`) inside the workdir is allowed. A content search of the whole workdir is not. A read rule `d/**` now also covers searching the directory `d` itself.
+4. **Flag variance, partly.** A learned read-only command (grep, sort, cut, wc and so on) may take new flags if every operand is an approved path. Flags that write or widen are never accepted: `grep -r/-R/-d`, `sort -o/--compress-program/-T`, `uniq IN OUT`. Commands with an env prefix, a pathed head like `./cat`, a redirect out, or a network destination are never widened. The awk and sed part is **not** done: those stay opaque.
+5. **`mkdir` of a report's parent directory.** `mkdir [-p] d` is allowed and costs no write if `d` is an ancestor of the literal directory of an approved write rule. Any other mkdir, `mkdir -m`, or `..` tricks are still blocked.
+6. **`propose` warns about wrong-path learning.** When Hermes's cron store is importable, `propose` reads the job prompt and prints `# warning: the job prompt names ...` for a file name the learned write rules do not cover. On the live proposals it fires only on repo-status (prompt says `reports/status.md`, learned `status.md`). The replay does not create real cron jobs, so it does not show the warning, and a scripted `--yes` approval still ignores it. That's why repo-status's false blocks remain.
+
+What's left in the 39: wrong learned paths (repo-status, log-summary), rewrites of the job's input issue files in issue-triage (arguably correct blocks), a `deps.md~` backup file, an `echo > report` write through the terminal when the job learned `write_file`, a `tee` to a new log file, and a `jq` read of stdin. None of these were widened, because each one would let the job write or read somewhere the human never approved.
+
+Tests: `tests/test_false_block_fixes.py` covers each widening and a list of calls that must still be blocked, including reads of `~/.ssh` and `~/.aws` (through `cat`, `read_file` and file-name search), `.env`, `curl | sh`, a pipe to a new host, `rm -rf`, an env-prefixed `cat`, `sort -o`, `grep -r`, mkdir outside the report dirs, and command substitution in `echo`. Two old adversarial cases changed only in which rule blocks them: a `patch` outside the workdir is now blocked by `paths.write` instead of `tools`, and `search_files /` by `paths.read` instead of `tools`. The old write-budget test now uses two different paths.
+
+Known gap, not new: a learned `grep` rule with its learned flags does not check grep's file operands (for example `grep -c K .env` when `grep -c` was learned). This branch does not change that behavior. The widened path does check operands.
 
 ## Caveats a harsh reviewer should weigh
 
