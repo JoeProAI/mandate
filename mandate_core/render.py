@@ -47,7 +47,8 @@ def _rules(pol: Policy | None, track: str):
 
 
 def leash_line(job: str, active: Policy | None, version: int | None, sha: str | None, mode: str,
-               pending: Policy | None, drift: list, runs: int, color: bool | None = None) -> str:
+               pending: Policy | None, drift: list, runs: int, color: bool | None = None,
+               history_runs: int = 0) -> str:
     paint = Paint(use_color() if color is None else color)
     state = "ENFORCING" if mode == "enforce" and active is not None else "OBSERVING"
     state_rgb = DENY if state == "ENFORCING" else PENDING
@@ -93,6 +94,8 @@ def leash_line(job: str, active: Policy | None, version: int | None, sha: str | 
     for item in legend:
         lines.append("  " + paint(item[:110], DIM))
     tail = f"{runs} run(s) observed"
+    if history_runs:
+        tail += f" ({history_runs} learned from Hermes history)"
     if drift:
         last = drift[0] if drift[0]["id"] >= drift[-1]["id"] else drift[-1]
         tail += f" \u00b7 last block #{last['id']}: {last['call'][:70]}"

@@ -17,8 +17,8 @@ inbox you can review and widen. Think AppArmor's "complain, then enforce", per c
 <!-- runtime:start -->
 `make prove` wall clock on the build VM (validate, full pytest, real-Hermes scenario, hook benchmark; from [proof/proof.json](proof/proof.json)):
 
-- Hermes v0.23.0: 33.7 s warm (Hermes already installed); 51.3 s cold (fresh Hermes clone and install)
-- Hermes v0.23.1: 36.3 s warm (Hermes already installed); 51.6 s cold (fresh Hermes clone and install)
+- Hermes v0.23.0: 41.4 s warm (Hermes already installed); 51.3 s cold (fresh Hermes clone and install)
+- Hermes v0.23.1: 56.3 s warm (Hermes already installed); 51.6 s cold (fresh Hermes clone and install)
 <!-- runtime:end -->
 
 ## How it compares
@@ -55,8 +55,8 @@ From the last `make prove` run (real Hermes loader, real cron execution identity
 details in [proof/PROOF.md](proof/PROOF.md), raw numbers in [proof/proof.json](proof/proof.json)):
 
 <!-- proof:start -->
-- Hermes v0.23.0: validate passed; tests 112 passed, 0 failed; escape cases caught 73/73; off-policy calls executed 4/4 in observe mode, 0/4 with Mandate enforcing; legit calls succeeded while enforcing 7/7; `pre_tool_call` with Mandate enforcing p50 1.4507 ms, p95 1.9858 ms; `make prove` 33.7 s warm (Hermes already installed); 51.3 s cold (fresh Hermes clone and install)
-- Hermes v0.23.1: validate passed; tests 112 passed, 0 failed; escape cases caught 73/73; off-policy calls executed 4/4 in observe mode, 0/4 with Mandate enforcing; legit calls succeeded while enforcing 7/7; `pre_tool_call` with Mandate enforcing p50 1.6983 ms, p95 2.1539 ms; `make prove` 36.3 s warm (Hermes already installed); 51.6 s cold (fresh Hermes clone and install)
+- Hermes v0.23.0: validate passed; tests 122 passed, 0 failed; escape cases caught 73/73; off-policy calls executed 4/4 in observe mode, 0/4 with Mandate enforcing; legit calls succeeded while enforcing 7/7; `pre_tool_call` with Mandate enforcing p50 1.4261 ms, p95 2.1519 ms; `make prove` 41.4 s warm (Hermes already installed); 51.3 s cold (fresh Hermes clone and install)
+- Hermes v0.23.1: validate passed; tests 122 passed, 0 failed; escape cases caught 73/73; off-policy calls executed 4/4 in observe mode, 0/4 with Mandate enforcing; legit calls succeeded while enforcing 7/7; `pre_tool_call` with Mandate enforcing p50 1.4593 ms, p95 2.2967 ms; `make prove` 56.3 s warm (Hermes already installed); 51.6 s cold (fresh Hermes clone and install)
 
 Proposal after 3 observed runs (Hermes v0.23.1; the workdir is the scenario's throwaway repo):
 
@@ -65,7 +65,7 @@ Proposal after 3 observed runs (Hermes v0.23.1; the workdir is the scenario's th
 # Review every rule. Nothing is enforced until `hermes mandate approve`.
 mandate: 1
 job: "nightly-triage"
-workdir: "/tmp/mandate-int-lplnjq5_/repo"
+workdir: "/tmp/mandate-int-pacet6kn/repo"
 observed_runs: 3
 tools:
   - "read_file"  # seen 3x
@@ -86,14 +86,14 @@ commands:
 hosts: []
 limits:
   max_writes_per_run: 1
-# proposed v1 sha256:c42f9e67f970  (12 rules from 3 run(s))
+# proposed v1 sha256:e4727ae77aaa  (12 rules from 3 run(s))
 # next: hermes mandate approve nightly-triage
 ```
 
 Leash Line after the poisoned run, no-color fallback:
 
 ```
-MANDATE ▸ nightly-triage  v1 sha256:c42f9e67f970  ENFORCING
+MANDATE ▸ nightly-triage  v1 sha256:e4727ae77aaa  ENFORCING
   tools    ▕▃▃▃▃██▃▃┃ 4 allowed
   paths    ▕██▅▅▅▅──┃ ▼#2 ▼#3  3 allowed · 2 blocked
   commands ▕████████┃ ▼#1 ▼#4  4 allowed · 2 blocked
@@ -113,6 +113,8 @@ hermes plugins enable mandate
 hermes mandate watch nightly-triage      # observe mode: records, never blocks
 # ...let the cron job run 3 or more times...
 hermes mandate propose nightly-triage    # prints the proposed mandate with evidence counts
+# or, if the job already has Hermes history, skip the wait:
+# hermes mandate propose nightly-triage --learn-from history
 hermes mandate approve nightly-triage    # shows the diff, asks y/N, then enforces
 hermes mandate status nightly-triage     # the Leash Line
 ```
@@ -124,6 +126,10 @@ The proposal generated in the last proof run is in the Results section above.
 A command rule is the command head plus subcommand words, then the flags that are allowed; a call may
 use a subset of them. `=<exact text>` allows one exact segment that Mandate otherwise refuses to reason
 about (for example `=bash -c 'make test'`). The same observations always produce byte-identical YAML.
+
+A proposal seeded with `--learn-from` says how many runs were learned from Hermes history, both in the
+header and as `history_runs:`, and each rule shows that part of its evidence (`# seen 4x, 3x from history`).
+History shows what the job did before Mandate was watching, so review those rules as carefully as any other.
 
 ## The Leash Line
 
@@ -149,6 +155,7 @@ which opens Mandate's SQLite file read-only and serves two GET routes on Hermes'
 |---|---|
 | `hermes mandate watch <job>` | Start observing a job (by cron job name or id). Never blocks. |
 | `hermes mandate propose <job>` | Compile observations into a pending mandate. Warns under 3 runs. |
+| `hermes mandate propose <job> --learn-from <source> [--workdir DIR]` | Seed observations from the job's existing Hermes history, then propose as above, so you don't have to wait for 3 live runs. `<source>` is `history` (this job's own cron history), `cron:<name or id>`, or a path to a session `.jsonl` file or a directory of them. Reads `$HERMES_HOME` (default `~/.hermes`): cron sessions named `cron_<job_id>_*` in `sessions/*.jsonl` and `state.db`, the workdir from `cron/jobs.json`, and run counts from `cron/output/<job_id>/` and `cron/executions.db`. Learned calls go through the same normalizer and redaction as live ones, are stored as `source=history`, and show as `seen 4x, 3x from history`. Unparseable rows and calls Mandate blocked are skipped. Fails with no policy written if there are no usable tool calls. Never approves. |
 | `hermes mandate approve <job> [--yes] [--observe]` | Show the diff, ask, store version + sha256, switch to enforce (or stay in observe with `--observe`). Refuses without a TTY unless `--yes`. |
 | `hermes mandate undo <job>` | Reactivate the previously approved version (or none). |
 | `hermes mandate drift <job>` | List blocked calls: id, time, run, failed rule, redacted call. |

@@ -69,6 +69,48 @@ def hermes_cli(env: dict, *args: str) -> str:
     return out.stdout
 
 
+def learn_from_history(s: dict) -> dict:
+    """A cron job with existing Hermes history (written by Hermes's own writers) and no live Mandate runs."""
+    from cron.jobs import create_job, save_job_output
+    from hermes_state import SessionDB, divert_session_transcript_jsonl
+
+    job = create_job("triage the repo", "0 3 * * *", name="history-triage", workdir=str(s["wd"]))
+
+    def messages(n: int) -> list[dict]:
+        tcs = [{"id": f"h{n}-{i}", "type": "function", "function": {"name": t, "arguments": json.dumps(_fmt(a, n))}}
+               for i, (t, a) in enumerate(LEGIT)]
+        return [{"role": "assistant", "content": "", "tool_calls": tcs}] + [
+            {"role": "tool", "tool_call_id": f"h{n}-{i}", "tool_name": t, "content": "ok"}
+            for i, (t, _) in enumerate(LEGIT)]
+
+    db = SessionDB()
+    try:
+        for n in range(2):
+            sid = f"cron_{job['id']}_2026110{n + 1}_030000"
+            db.create_session(sid, "cron")
+            for m in messages(n):
+                db.append_message(sid, m["role"], m.get("content"), tool_name=m.get("tool_name"),
+                                  tool_calls=m.get("tool_calls"), tool_call_id=m.get("tool_call_id"))
+    finally:
+        db.close()
+    path = divert_session_transcript_jsonl(f"cron_{job['id']}_20261103_030000", messages(2))
+    with open(path, "a", encoding="utf-8") as fh:
+        fh.write('{"role": "assistant", "tool_calls": [{"function": {"name": "terminal", "arguments": "{bad\n')
+    for n in range(3):
+        save_job_output(job["id"], f"run {n} done")
+    exe = Path(sys.executable).with_name("hermes")
+    proposal = hermes_cli(s["env"], "propose", "history-triage", "--learn-from", "history")
+    status = hermes_cli(s["env"], "status", "history-triage", "--no-color")
+    missing = subprocess.run([str(exe), "mandate", "propose", "no-such-job", "--learn-from", "history"],
+                             env=s["env"], capture_output=True, text=True, timeout=120)
+    return {"learn_proposal": proposal, "learn_leash_line": status,
+            "learn_history_runs": next((int(x.split(":")[1]) for x in proposal.splitlines()
+                                        if x.startswith("history_runs:")), 0),
+            "learn_rules_labeled": sum(1 for x in proposal.splitlines() if "from history" in x and "# seen" in x),
+            "learn_pending_only": "OBSERVING" in status and "\nv1 " not in status and "# proposed v1" in proposal,
+            "learn_no_history_rc": missing.returncode, "learn_no_history_err": missing.stderr.strip()}
+
+
 def main() -> int:
     base = Path(tempfile.mkdtemp(prefix="mandate-int-"))
     s = setup(base)
@@ -130,6 +172,7 @@ def main() -> int:
 
     drift = hermes_cli(env, "drift", "nightly-triage")
     status = hermes_cli(env, "status", "nightly-triage", "--no-color")
+    learn = learn_from_history(s)
 
     # Hook overhead: real _dispatch_pre_tool_call_hooks with Mandate enforcing, plus no-scope fast path.
     bench_args = {"command": "git log --oneline -n 5"}
@@ -173,6 +216,7 @@ def main() -> int:
         "drift_records": drift.count("\n  #"),
         "drift": drift,
         "leash_line": status,
+        **learn,
         "hook_ms": {"enforce_p50": pct(samples_enforce, .5), "enforce_p95": pct(samples_enforce, .95),
                     "no_scope_p50": pct(samples_noscope, .5), "no_scope_p95": pct(samples_noscope, .95),
                     "samples": len(samples_enforce)},
