@@ -182,6 +182,8 @@ The fixes below change only enforcement (`mandate_core/policy.py`, `engine.py`, 
 - **Overhead:** no measurable change. Back-to-back replays on the same VM, no guards: base p50 2.19 and 1.84 ms, p95 6.72 and 7.72 ms. Fixed p50 1.78 and 1.74 ms, p95 5.98 and 4.54 ms. The full replay after the fix gave p50 1.65 ms and p95 4.47 ms. This VM is noisy, so treat it as "the same", not "faster".
 - **Live numbers in the tables above are unchanged** (9 of 263 in clean runs). They are what happened live with the old code. The replayed figure for the same runs is 8 of 263.
 
+**Small live spot check with the fixed code.** Real Hermes cron and gpt-4o-mini, Mandate arm only. Four jobs: issue-triage, news-digest, test-report and dependency-audit. Each job had 3 observe runs, an approval, then 3 clean enforce runs. That's 12 clean enforce runs and 0 blocks. 9 of the 12 completed. The 3 that didn't were the test-report runs, which stopped after 2 calls each with nothing blocked, so that's the model, not Mandate. It cost $0.015 of key usage. The runs were short (2 to 6 calls each), so this shows the fixes don't break a live run. It doesn't measure the false-block rate, and it isn't in `traces/`.
+
 What landed, mapped to the list above:
 
 1. **Distinct write paths.** A write to a path this run already wrote does not use the write budget. Rewrites are capped at `max_writes_per_run + 4` write calls per run. A new path still costs a write.
