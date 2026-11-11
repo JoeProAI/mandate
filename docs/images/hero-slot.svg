@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-label="README hero">
-  <rect width="1200" height="560" fill="#0B0E14"/>
-  <rect x="24" y="24" width="1152" height="512" fill="none" stroke="#3A4254" stroke-width="2" stroke-dasharray="8 8" rx="12"/>
-  <text x="600.0" y="270.0" text-anchor="middle" fill="#A8B0C0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="28">README hero</text>
-  <text x="600.0" y="308.0" text-anchor="middle" fill="#6B7385" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18">Scriptorium art slot. Replace this file when the visual pass lands.</text>
-</svg>

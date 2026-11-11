@@ -4,6 +4,10 @@ description: "Mandate format, evidence counts, the Leash Line, the drift inbox, 
 keywords: ["mandate format", "evidence", "Leash Line", "drift", "widen", "undo", "fail closed"]
 ---
 
+<Frame className="mandate-plate">
+  <img src="/images/section-concepts.webp" alt="Three concrete posts in a row, each with an orange line pulled taut from its ring." />
+</Frame>
+
 ## Mandate format
 
 A mandate is a small, deterministic YAML document. The same observations always produce byte-identical YAML. Format version is `mandate: 1`. An example from the last `make prove` run (Hermes v0.23.1, throwaway workdir):
@@ -71,7 +75,7 @@ Every list rule carries a `# seen Nx` comment. `N` is how many observed calls pr
 That screenshot is a real render of `hermes mandate status nightly-triage` right after the poisoned run in `demo/run_demo.sh`. Regenerate it with `python3 demo/capture_leash_line.py`. The policy is enforcing, so there is no pending band in this frame.
 
 <Frame>
-  <img src="/images/leash-line-slot.svg" alt="Placeholder for a Scriptorium-themed Leash Line. Replace this file when the visual pass lands." />
+  <img src="/images/leash-line-themed.webp" alt="Leash Line for nightly-triage, mandate v1, demo data: tools, paths, commands and hosts tracks; blocked calls #1 to #4 notched on the paths and commands lines." />
 </Frame>
 
 How to read it:

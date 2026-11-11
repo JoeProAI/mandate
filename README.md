@@ -1,16 +1,16 @@
 # Mandate
 
+![Mandate: a leash for unattended Hermes jobs. Demo run 4: 0 of 4 off-mandate calls ran, 7 of 7 legit calls finished.](assets/hero-1600x800.png)
+
 Learned least-privilege for unattended Hermes jobs.
 
 Built on [Hermes](https://github.com/NousResearch/hermes-agent) by [Nous Research](https://nousresearch.com). Thanks to Nous for the Hermes Agent Plugin Hackathon.
 
 Docs: [mandate-db2d83af.mintlify.site](https://mandate-db2d83af.mintlify.site)
 
-![Leash Line from hermes mandate status nightly-triage after the poisoned demo run: tools, paths, commands, hosts tracks with blocked-call notches #1 to #4](demo/leash-line.png)
+![Leash Line for nightly-triage, mandate v1, demo data](assets/leash-line@2x.png)
 
-Real render of `hermes mandate status nightly-triage` right after the poisoned run in `demo/run_demo.sh`
-(regenerate with `python3 demo/capture_leash_line.py`). The policy is enforcing, so there is no pending
-(#F5C542) band in this frame. The no-color text version is under [Results](#results).
+Drawn Leash Line from the poisoned demo run in `demo/run_demo.sh`, labeled as demo data. The policy is enforcing in this frame. The no-color text version is under [Results](#results).
 
 A Hermes cron job that "triages my repo issues" gets the whole terminal and file toolset, with any
 argument, every night, with nobody watching. Mandate watches what the job actually does, turns that into

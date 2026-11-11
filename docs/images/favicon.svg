@@ -1,4 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" role="img" aria-label="Mandate">
-  <rect width="32" height="32" rx="6" fill="#0B0E14"/>
-  <text x="16" y="23" text-anchor="middle" fill="#8BA3FF" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" font-weight="700">M</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><title>Mandate</title><rect width="64" height="64" rx="12" fill="#081218"/><rect x="7" y="16" width="7" height="32" rx="1.5" fill="#E2F0E4"/><circle cx="24" cy="32" r="6.5" fill="none" stroke="#E2F0E4" stroke-width="4.5"/><rect x="30" y="29.5" width="21" height="5" fill="#FF3D24"/><rect x="51" y="23" width="6" height="18" rx="1" fill="#E2F0E4"/></svg>

@@ -5,12 +5,10 @@ description: "Learned least-privilege for unattended Hermes jobs. A per-job poli
 keywords: ["Mandate", "Hermes", "Nous Research", "cron", "least privilege", "plugin"]
 ---
 
-Learned least-privilege for unattended Hermes jobs.
-
 Built on [Hermes](https://github.com/NousResearch/hermes-agent) by [Nous Research](https://nousresearch.com). Thanks to Nous for the Hermes Agent Plugin Hackathon.
 
 <Frame>
-  <img src="/images/hero-slot.svg" alt="Placeholder for the Mandate README hero. Scriptorium art goes here." />
+  <img src="/images/hero.webp" alt="Mandate: an orange leash clipped to a steel ring in a wet night yard, with the four calls blocked in the demo hanging off it as tags." />
 </Frame>
 
 A Hermes cron job that "triages my repo issues" gets the whole terminal and file toolset, with any argument, every night, with nobody watching. Mandate watches what the job actually does, turns that into a short, readable policy (tools, path globs, command shapes, hosts, a write budget), and once a human approves it, blocks every call outside that policy inside the tool loop. Blocked calls land in a drift inbox you can review and widen.
@@ -29,6 +27,10 @@ A Hermes cron job that "triages my repo issues" gets the whole terminal and file
     What Mandate sees, what it does not, and the honest known limits.
   </Card>
 </Columns>
+
+<Frame className="mandate-plate">
+  <img src="/images/section-overview.webp" alt="A single orange line strung from a short concrete post across a wet, lamp-lit yard." />
+</Frame>
 
 ## Why this exists
 
@@ -55,6 +57,6 @@ The three can run together. The other two look for injected content and risky tr
 - It keeps state across runs (observations, versions, approvals, drift) in its own SQLite store.
 - It parses arguments: shell segments, nested interpreters, resolved paths, parsed hostnames.
 
-## Visuals still landing
+## About the images
 
-Scriptorium is doing a themed pass on the README hero, the Leash Line, the video frames, and the docs art direction. Until those files arrive, the slots on this site are labeled placeholders. The Leash Line screenshot in [Concepts](/concepts) and [Proof](/proof) is a real terminal capture from `demo/run_demo.sh`, not a mock.
+The yard photographs are generated plates (ChatGPT), graded to one palette. The Leash Line images are drawn by code from the deterministic demo capture (`video/run_demo.cast`) and are labeled as demo data. The Leash Line screenshot in [Concepts](/concepts) and [Proof](/proof) is a real terminal capture from `demo/run_demo.sh`.

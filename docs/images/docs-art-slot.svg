@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-label="Docs art direction">
-  <rect width="1200" height="420" fill="#0B0E14"/>
-  <rect x="24" y="24" width="1152" height="372" fill="none" stroke="#3A4254" stroke-width="2" stroke-dasharray="8 8" rx="12"/>
-  <text x="600.0" y="200.0" text-anchor="middle" fill="#A8B0C0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="28">Docs art direction</text>
-  <text x="600.0" y="238.0" text-anchor="middle" fill="#6B7385" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18">Scriptorium art slot. Replace this file when the visual pass lands.</text>
-</svg>

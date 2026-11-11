@@ -1,0 +1,69 @@
+/* Mandate docs: Night Yard skin for Mintlify (theme "maple").
+   Mintlify loads every .css file in the content directory on every page.
+   docs.json sets colors, background, fonts (Anybody / Host Grotesk) and code themes; this file adds what
+   docs.json cannot: Anybody's width axis, the mono face, tokens, plates and callout classes. */
+@import url("https://fonts.googleapis.com/css2?family=Anybody:wdth,wght@100..150,500..900&family=Cascadia+Code:wght@400..700&display=swap");
+
+:root:root {
+  /* Mintlify derives --gray-* from colors.primary; with a red-orange primary that gives warm, beige-leaning greys.
+     Replace the whole scale with cold, mercury-tinted greys (RGB triplets, as Mintlify expects). */
+  --gray-50:242 250 246; --gray-100:228 242 236; --gray-200:201 222 214; --gray-300:168 194 184; --gray-400:143 170 155;
+  --gray-500:104 128 120; --gray-600:70 92 86; --gray-700:52 72 70; --gray-800:30 46 50; --gray-900:18 32 37; --gray-950:10 20 25;
+}
+:root {
+  --yard-0:#DDF1E8; --yard-1:#F3FBF7; --yard-2:#C9E6DA; --fence:#9DBDB2; --fence-strong:#4E6F66;
+  --lamp:#06121A; --lamp-dim:#3A5550; --leash:#C0280A; --mercury:#006B54; --sodium:#FFD24A; --focus:#005C49;
+  --font-mono:"Cascadia Code","JetBrains Mono","DejaVu Sans Mono",monospace;
+}
+html.dark {
+  --yard-0:#081218; --yard-1:#0F1C22; --yard-2:#172A2F; --fence:#2C4048; --fence-strong:#5E7A76;
+  --lamp:#E2F0E4; --lamp-dim:#8FAA9B; --leash:#FF3D24; --mercury:#4BE3B4; --sodium:#FFD24A; --focus:#A8F5D6;
+}
+
+/* type: wide yard-marking headings, never ALL CAPS in body */
+#page-title, .prose h1, .prose h2, h1, h2 { font-stretch:125%; letter-spacing:-0.01em; }
+#page-title { font-weight:850; line-height:1.0; }
+.prose h2 { font-weight:800; padding-top:.25rem; border-top:1px solid var(--fence); margin-top:2.75rem; }
+.prose h3 { font-stretch:112%; font-weight:700; }
+code, pre, kbd, .font-mono { font-family:var(--font-mono) !important; font-variant-ligatures:none; }
+.prose :not(pre) > code { background:var(--yard-2); color:var(--lamp); border:1px solid var(--fence); border-radius:3px; padding:.1em .35em; }
+
+/* text colors: body text is mercury-lit, links pull the leash */
+.prose a { text-decoration-color:var(--leash); text-underline-offset:3px; text-decoration-thickness:2px; }
+:focus-visible { outline:2px solid var(--focus) !important; outline-offset:2px; }
+
+/* navbar and sidebar sit on the same wet concrete, divided by chain-link hairlines */
+#navbar { border-bottom:1px solid var(--fence); }
+html.dark .prose { color:rgb(var(--gray-300)); }
+html:not(.dark) .prose { color:rgb(var(--gray-700)); }
+html.dark #navbar { background:rgba(8,18,24,.86); }
+#sidebar { border-right:1px solid var(--fence); }
+
+/* code blocks: one yard surface for both modes; the Shiki theme only supplies token colors */
+html .code-block [data-component-part="code-block-root"], html.dark .code-block [data-component-part="code-block-root"] {
+  background-color:var(--yard-1) !important; }
+html .code-block { border:1px solid var(--fence); border-radius:4px; background-color:var(--yard-1); }
+[data-component-part="code-block-root"] pre, [data-component-part="code-block-root"] pre code,
+[data-component-part="code-block-root"] > div { background:transparent !important; border:0 !important; }
+.prose pre { background:var(--yard-1) !important; }
+
+/* plates: every page opens with a graded photo plate, edge to edge in the column */
+.mandate-plate img, .mandate-plate { border-radius:4px; }
+.mandate-plate { border:1px solid var(--fence); overflow:hidden; }
+
+/* allow / block / pending callouts: color plus a drawn shape, never color alone */
+.call { display:flex; gap:.6rem; align-items:baseline; font-family:var(--font-mono); font-size:.875rem; line-height:1.5;
+        padding:.55rem .8rem; border:1px solid var(--fence); border-left-width:4px; border-radius:3px; background:var(--yard-1); margin:.4rem 0; }
+.call::before { flex:none; font-weight:700; width:1.1em; }
+.call--allow { border-left-color:var(--mercury); } .call--allow::before { content:"\2713"; color:var(--mercury); }
+.call--block { border-left-color:var(--leash); }   .call--block::before { content:"\2715"; color:var(--leash); }
+.call--pending { border-left-color:var(--sodium); border-left-style:dashed; } .call--pending::before { content:"\25C7"; color:var(--lamp); }
+.call b { font-weight:700; } .call small { color:var(--lamp-dim); }
+
+/* rule card: one mandate rule with its evidence count */
+.rule { display:grid; grid-template-columns:auto 1fr auto; gap:.75rem; align-items:center; font-family:var(--font-mono); font-size:.875rem;
+        padding:.5rem .75rem; border:1px solid var(--fence); border-radius:3px; background:var(--yard-1); }
+.rule .tick { width:6px; height:1.1rem; background:var(--mercury); border-radius:1px; }
+.rule .seen { color:var(--lamp-dim); }
+
+@media (prefers-reduced-motion: reduce) { * { transition:none !important; animation:none !important; } }

@@ -4,19 +4,18 @@
   "name": "Mandate",
   "description": "Learned least-privilege for unattended Hermes jobs.",
   "colors": {
-    "primary": "#6B8CFF",
-    "light": "#8BA3FF",
-    "dark": "#3D5BD4"
+    "primary": "#C0280A",
+    "light": "#FF3D24",
+    "dark": "#C0280A"
   },
   "appearance": {
     "default": "dark",
     "strict": false
   },
   "background": {
-    "decoration": "grid",
     "color": {
-      "light": "#F4F6FA",
-      "dark": "#0B0E14"
+      "light": "#DDF1E8",
+      "dark": "#081218"
     }
   },
   "logo": {
@@ -27,11 +26,11 @@
   "favicon": "/images/favicon.svg",
   "fonts": {
     "heading": {
-      "family": "IBM Plex Sans",
-      "weight": 600
+      "family": "Anybody",
+      "weight": 800
     },
     "body": {
-      "family": "IBM Plex Sans",
+      "family": "Host Grotesk",
       "weight": 400
     }
   },
@@ -64,17 +63,35 @@
       {
         "header": "Mandate",
         "items": [
-          { "label": "GitHub", "href": "https://github.com/JoeProAI/mandate" },
-          { "label": "Quickstart", "href": "/quickstart" },
-          { "label": "Proof", "href": "/proof" }
+          {
+            "label": "GitHub",
+            "href": "https://github.com/JoeProAI/mandate"
+          },
+          {
+            "label": "Quickstart",
+            "href": "/quickstart"
+          },
+          {
+            "label": "Proof",
+            "href": "/proof"
+          }
         ]
       },
       {
         "header": "Nous Research",
         "items": [
-          { "label": "Nous Research", "href": "https://nousresearch.com" },
-          { "label": "Hermes Agent", "href": "https://github.com/NousResearch/hermes-agent" },
-          { "label": "Built on Hermes", "href": "/nous" }
+          {
+            "label": "Nous Research",
+            "href": "https://nousresearch.com"
+          },
+          {
+            "label": "Hermes Agent",
+            "href": "https://github.com/NousResearch/hermes-agent"
+          },
+          {
+            "label": "Built on Hermes",
+            "href": "/nous"
+          }
         ]
       }
     ]
@@ -111,9 +128,14 @@
     "eyebrows": "breadcrumbs",
     "codeblocks": {
       "theme": {
-        "light": "github-light",
-        "dark": "github-dark"
+        "light": "vitesse-light",
+        "dark": "vitesse-black"
       }
     }
+  },
+  "thumbnails": {
+    "preset": "headline",
+    "appearance": "dark",
+    "background": "/images/thumb-bg.jpg"
   }
 }
