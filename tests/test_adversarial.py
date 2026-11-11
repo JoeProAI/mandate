@@ -102,9 +102,10 @@ PATH_ESCAPES = [
     ("write_file", {"path": "reports/run.sh", "content": "x"}, "paths.write"),
     ("write_file", {"path": "link_out/x.md", "content": "x"}, "paths.write"),
     ("patch", {"mode": "patch", "patch": "*** Begin Patch\n*** Update File: ../outside/x.md\n*** End Patch"},
-     "tools"),
+     "paths.write"),  # patch is in the edit family with write_file, so the path rule is what blocks it
     ("terminal", {"command": "cat etc/passwd", "workdir": "/"}, "paths.read"),
-    ("search_files", {"pattern": "key", "path": "/"}, "tools"),
+    ("search_files", {"pattern": "key", "path": "/"}, "paths.read"),  # read family with read_file
+    ("search_files", {"pattern": "id_rsa", "path": "~/.ssh", "target": "files"}, "paths.read"),
 ]
 
 

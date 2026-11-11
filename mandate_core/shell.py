@@ -454,3 +454,19 @@ def path_candidates(seg: Segment) -> list[tuple[str, str]]:
     if posixpath.dirname(seg.head) and not seg.opaque:
         out.append(("read", seg.head))
     return out
+
+
+GREP_HEADS = {"grep", "egrep", "fgrep"}
+
+
+def grep_operands(seg: Segment) -> list[str]:
+    """File operands of a grep-style segment (everything after the pattern, or every positional when the
+    pattern came from -e/-f). Empty for other heads."""
+    lname = posixpath.basename(seg.head).lower()
+    if lname not in GREP_HEADS or seg.opaque:
+        return []
+    pattern_given = any(f in ("-e", "-f", "--regexp", "--file") for f in seg.flags)
+    ops = list(seg.positionals) if pattern_given else list(seg.positionals[1:])
+    if any(f in ("-f", "--file") for f in seg.flags):
+        ops += list(seg.flag_values)
+    return ops
