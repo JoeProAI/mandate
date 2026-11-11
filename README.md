@@ -10,7 +10,7 @@ Learned least-privilege for unattended Hermes jobs.
 
 Built on [Hermes](https://github.com/NousResearch/hermes-agent) by [Nous Research](https://nousresearch.com). Thanks to Nous for the Hermes Agent Plugin Hackathon.
 
-Docs: [mandate-db2d83af.mintlify.app](https://mandate-db2d83af.mintlify.app)
+Docs: [mandate-db2d83af-26675499.mintlify.site](https://mandate-db2d83af-26675499.mintlify.site)
 
 ![Leash Line for nightly-triage, mandate v1, demo data](assets/leash-line@2x.png)
 
@@ -272,7 +272,7 @@ scripts/live_demo.sh  # live run through Hermes cron with a real model: needs yo
 AI-assisted: written by Devin (Cognition) from a brief by Grok Bot for Joe Gaither. All code is new since
 Nov 5, 2026, built and tested against Hermes Agent v0.23.0 and v0.23.1. Milestones landed as PRs #1 to #8
 in this repo. API surprises and design notes are in [NOTES.md](NOTES.md). Full docs are at
-[mandate-db2d83af.mintlify.app](https://mandate-db2d83af.mintlify.app).
+[mandate-db2d83af-26675499.mintlify.site](https://mandate-db2d83af-26675499.mintlify.site).
 
 ## License
 
