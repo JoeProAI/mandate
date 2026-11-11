@@ -1,0 +1,77 @@
+---
+title: "Quickstart"
+description: "Install Mandate, observe a Hermes cron job, propose a policy, approve it, and enforce it."
+keywords: ["install", "watch", "propose", "approve", "enforce", "Hermes plugin"]
+---
+
+Requires Hermes Agent v0.23.0 or later. Mandate is a standalone plugin. It has no runtime dependencies beyond the Python standard library.
+
+<Steps>
+  <Step title="Install and enable">
+    ```bash
+    hermes plugins install https://github.com/JoeProAI/mandate
+    hermes plugins enable mandate
+    ```
+  </Step>
+  <Step title="Observe">
+    Start recording a job. Observe mode never blocks.
+
+    ```bash
+    hermes mandate watch nightly-triage
+    ```
+
+    `watch` accepts a cron job name or id. If you pass a name that has not run yet, Mandate stores a placeholder (`name:nightly-triage`) and the first cron run of a job with that name adopts it.
+
+    Let the job run at least three times. `propose` will compile with fewer runs, but it prints a warning: 3 or more give a more reliable mandate. `MIN_RUNS` in the compiler is 3.
+
+    By default, `observe_all_cron` is true, so Mandate also records call shapes for cron jobs you have not watched yet. You can still `propose` those from `hermes mandate list`. If you turn `observe_all_cron` off, only watched jobs are recorded.
+  </Step>
+  <Step title="Propose">
+    ```bash
+    hermes mandate propose nightly-triage
+    ```
+
+    This compiles the observed runs into a pending mandate and prints it, with an evidence count (`# seen Nx`) on every rule. Nothing is enforced yet. If the compiled YAML is byte-identical to the current pending or active mandate, it prints the text and says it is unchanged.
+  </Step>
+  <Step title="Approve">
+    ```bash
+    hermes mandate approve nightly-triage
+    ```
+
+    Mandate shows a unified diff of the active mandate (or empty) against the pending one, then asks `y/N`. Approval needs a TTY, or you must pass `--yes`. After you approve, the job switches to enforce unless you also pass `--observe`, which stores the approval but keeps recording without blocking.
+
+    ```bash
+    hermes mandate approve nightly-triage --yes
+    hermes mandate approve nightly-triage --yes --observe
+    ```
+  </Step>
+  <Step title="Enforce and inspect">
+    ```bash
+    hermes mandate status nightly-triage
+    ```
+
+    That prints the [Leash Line](/concepts#the-leash-line). If you approved with `--observe`, switch later with `hermes mandate enforce nightly-triage`. You can go back with `hermes mandate observe nightly-triage`.
+  </Step>
+</Steps>
+
+## What happens on the next run
+
+In enforce mode, a call inside the approved mandate runs as usual. A call outside it is blocked in `pre_tool_call`, before the tool runs, and a drift record is stored. The block message names the failed rule, the drift id, and the exact widen command.
+
+```bash
+hermes mandate drift nightly-triage
+hermes mandate widen nightly-triage 4
+hermes mandate approve nightly-triage
+```
+
+Widen only proposes a new pending version. The active mandate does not change until you approve again.
+
+## Uninstall
+
+```bash
+hermes plugins disable mandate
+hermes plugins remove mandate
+rm -rf ~/.hermes/plugin-data/mandate   # observations, mandates, drift (use your HERMES_HOME)
+```
+
+Disabling leaves no residual effect. Mandate changes no Hermes config and wraps nothing.

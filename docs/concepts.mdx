@@ -1,0 +1,124 @@
+---
+title: "Concepts"
+description: "Mandate format, evidence counts, the Leash Line, the drift inbox, widen and undo, and fail-closed enforcement."
+keywords: ["mandate format", "evidence", "Leash Line", "drift", "widen", "undo", "fail closed"]
+---
+
+## Mandate format
+
+A mandate is a small, deterministic YAML document. The same observations always produce byte-identical YAML. Format version is `mandate: 1`. An example from the last `make prove` run (Hermes v0.23.1, throwaway workdir):
+
+```yaml
+# Mandate for nightly-triage: generated from 3 observed run(s).
+# Review every rule. Nothing is enforced until `hermes mandate approve`.
+mandate: 1
+job: "nightly-triage"
+workdir: "/tmp/mandate-int-lplnjq5_/repo"
+observed_runs: 3
+tools:
+  - "read_file"  # seen 3x
+  - "search_files"  # seen 3x
+  - "terminal"  # seen 12x
+  - "write_file"  # seen 3x
+paths:
+  read:
+    - "src"  # seen 6x
+    - "src/**"  # seen 3x
+  write:
+    - "reports/*.md"  # seen 3x
+commands:
+  - "git log --oneline -n"  # seen 3x
+  - "git status --short"  # seen 3x
+  - "grep -n -r"  # seen 3x
+  - "ls"  # seen 3x
+hosts: []
+limits:
+  max_writes_per_run: 1
+```
+
+Fields:
+
+| Field | Meaning |
+|---|---|
+| `job` | Cron job name (or id if the job has no name) |
+| `workdir` | Workdir the policy was compiled against. Path checks resolve against this root. |
+| `observed_runs` | How many runs went into the proposal |
+| `tools` | Allowed tool names. Unknown tools, including MCP and other plugins, are refused in enforce mode. `mandate_status` is exempt and is never recorded as a call to check. |
+| `paths.read` | Globs for reads. A path that already matches a write rule is also allowed as a read. |
+| `paths.write` | Globs for writes, including redirect targets. |
+| `commands` | Command rules (see below). |
+| `hosts` | Allowed hostnames. Empty means no host is allowed. |
+| `limits.max_writes_per_run` | Write budget for one run. Compiled from the highest write count seen in the observed runs. `null` disables the budget. |
+
+A command rule is the command head plus subcommand words, then the flags that are allowed. A call may use a subset of those flags. `env X=1 cmd` is unwrapped, and `X` must be listed. `-<flag>` allows that flag; `-*` on a rule allows any flags. `=<exact text>` allows one exact segment that Mandate otherwise refuses to reason about, for example `=bash -c 'make test'`.
+
+The content hash of the YAML (SHA-256) is stored with the approval. If the stored text no longer hashes to that value, enforce mode blocks the call.
+
+## Evidence counts
+
+Every list rule carries a `# seen Nx` comment. `N` is how many observed calls produced that rule. The Leash Line uses the same counts for bar height. Counts are review aids. They are not weights in the matcher: a rule with `seen 1x` and a rule with `seen 12x` are equally binding once approved.
+
+`hermes mandate export <job> --json` returns the same families as `value` and `evidence` pairs, plus `max_writes_per_run`.
+
+## The Leash Line
+
+`hermes mandate status <job>` draws one track per rule family: tools, paths, commands, hosts.
+
+<Frame>
+  <img src="/images/leash-line.png" alt="Real render of hermes mandate status nightly-triage after the poisoned demo run: tools, paths, commands, and hosts tracks with blocked-call notches 1 to 4." />
+</Frame>
+
+That screenshot is a real render of `hermes mandate status nightly-triage` right after the poisoned run in `demo/run_demo.sh`. Regenerate it with `python3 demo/capture_leash_line.py`. The policy is enforcing, so there is no pending band in this frame.
+
+<Frame>
+  <img src="/images/leash-line-slot.svg" alt="Placeholder for a Scriptorium-themed Leash Line. Replace this file when the visual pass lands." />
+</Frame>
+
+How to read it:
+
+- The green band is what is allowed. Bar height is evidence.
+- Yellow diamonds are rules pending approval.
+- Red notches are blocked calls, labeled with their drift id.
+- Yellow triangles are blocked calls that were later widened.
+- Truecolor on a dark terminal. `NO_COLOR`, `--no-color`, and non-terminal output fall back to plain text.
+
+No-color fallback from the same proof run:
+
+```
+MANDATE ▸ nightly-triage  v1 sha256:c42f9e67f970  ENFORCING
+  tools    ▕▃▃▃▃██▃▃┃ 4 allowed
+  paths    ▕██▅▅▅▅──┃ ▼#2 ▼#3  3 allowed · 2 blocked
+  commands ▕████████┃ ▼#1 ▼#4  4 allowed · 2 blocked
+  hosts    ▕────────┃ 0 allowed
+  tools: terminal 12x, read_file 3x, search_files 3x
+  paths: src 6x, reports/*.md 3x, src/** 3x
+  commands: git log --oneline -n 3x, git status --short 3x, grep -n -r 3x
+  4 run(s) observed · last block #4: terminal: bash -c 'cat src/app.py'
+```
+
+Hermes Desktop also has a read-only Mandate page (jobs list, Leash Line, pending diff, drift timeline). Approving and widening stay in the terminal. The desktop half ships disabled. Turn it on under Capabilities, Plugins. See [Configuration](/configuration#desktop-page).
+
+## Drift inbox
+
+A blocked or escalated call becomes a drift record: id, time, run, failed rule family, redacted call, and reason. `hermes mandate drift <job>` lists them, newest first. Status starts as `open`, or `escalated` when an interactive scope asked Hermes for approval instead of blocking.
+
+## Widen and undo
+
+`hermes mandate widen <job> <drift-id>` compiles a new pending version that allows that call. It widens every failing aspect of the drifted call, not only the first. By default it adds the exact subject that failed (for an opaque shell segment, that is the verbatim `=...` form). `--pattern` uses a broader rule and prints a preview of how many past observed calls the broader rule would newly allow, up to 20 examples.
+
+Widen never activates the new version. You still run `hermes mandate approve <job>`.
+
+`hermes mandate undo <job>` reactivates the previously approved version. If there is no earlier approved version, the job returns to observe mode with no mandate. A later undo walks further back through the approval history. Undo does not change mode when it lands on an earlier version.
+
+## Fail-closed
+
+In enforce mode, Mandate blocks the call if any of these are true:
+
+- The call falls outside the approved mandate.
+- Mandate itself errors while evaluating the call, and the job is not in observe mode.
+- It cannot tell the mode, and it is (or might be) a cron run. A failed cron-identity lookup is treated as cron, so the call is blocked. Interactive sessions with no bound scope are left alone.
+- The stored policy text no longer matches its approval hash.
+
+Cron runs always get `block`. Mandate never returns `approve` from a cron run and never rewrites arguments. Interactive scopes may escalate to the normal Hermes approval prompt when `interactive_violation` is `approve`.
+
+Observe mode never blocks, including when Mandate hits an internal error.

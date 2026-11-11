@@ -1,0 +1,40 @@
+---
+title: "Built on Hermes"
+sidebarTitle: "Nous Research"
+description: "Mandate is a plugin for Hermes Agent by Nous Research, built for the Hermes Agent Plugin Hackathon."
+keywords: ["Nous Research", "Hermes Agent", "hackathon", "sponsor"]
+---
+
+Mandate is built on [Hermes Agent](https://github.com/NousResearch/hermes-agent) by [Nous Research](https://nousresearch.com).
+
+Thanks to Nous for the Hermes Agent Plugin Hackathon, for shipping a plugin hook that can veto a tool call before it runs, and for making cron execution identity available to plugins. Mandate needs both of those. A prompt cannot do this work.
+
+<Frame>
+  <img src="/images/docs-art-slot.svg" alt="Placeholder for Scriptorium docs art on the Nous credit page. No Nous logos will be added here." />
+</Frame>
+
+This page is a text credit only. There are no Nous or Hermes logos on this site, on purpose.
+
+## What Mandate uses from Hermes
+
+- `pre_tool_call` and `post_tool_call` hooks, registered from `mandate_core/plugin.py`
+- `ctx.current_cron_execution()` so each job gets its own policy and two jobs running at once never share one
+- `ctx.register_cli_command`, `ctx.register_command`, and `ctx.register_tool` for the CLI, `/mandate`, and `mandate_status`
+- The plugin storage path for `<HERMES_HOME>/plugin-data/mandate/`
+- Optional read-only routes on Hermes's local Desktop API, behind Hermes's own auth
+
+Mandate is tested against Hermes Agent v0.23.0 and v0.23.1. `plugin.yaml` requires `>=0.23.0`.
+
+## Related Hermes issues
+
+Mandate exists because unattended jobs can still run with the agent's full toolset. These open issues, titles verified on 10 Nov 2026, describe that gap in Hermes's own words:
+
+- [#20984](https://github.com/NousResearch/hermes-agent/issues/20984): feat: add cron_mode: allowlist to restrict cron jobs to command_allowlist only
+- [#60505](https://github.com/NousResearch/hermes-agent/issues/60505): Approval gate: fail-closed option for non-interactive contexts + permanent allowlist bypasses cron_mode deny
+- [#144434](https://github.com/NousResearch/hermes-agent/issues/144434): [Bug]: command_allowlist (Always Allow) also exempts commands in cron runs with cron_mode: deny
+- [#83626](https://github.com/NousResearch/hermes-agent/issues/83626): Cron command guards ignore cron_mode when HERMES_EXEC_ASK is inherited
+- [#58673](https://github.com/NousResearch/hermes-agent/issues/58673): [Bug]: approvals.cron_mode: deny never applies to gateway-hosted cron/kanban sessions — each gated call blocks for approvals.gateway_timeout
+
+Mandate does not close those issues. It offers a per-job policy, learned from observed runs and approved by a human, enforced in the hook those issues are about.
+
+Source: [github.com/JoeProAI/mandate](https://github.com/JoeProAI/mandate). License: MIT.

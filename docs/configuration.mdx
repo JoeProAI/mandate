@@ -1,0 +1,57 @@
+---
+title: "Configuration"
+description: "Plugin settings, the SQLite store, the Desktop page, and environment overrides."
+keywords: ["config.yaml", "observe_all_cron", "interactive_violation", "MANDATE_DB", "Desktop"]
+---
+
+Settings live in Hermes `config.yaml` under `plugins.entries.mandate.settings`. The schema is declared in `plugin.yaml`.
+
+## Settings
+
+| Key | Type | Default | What it does |
+|---|---|---|---|
+| `mode` | `observe` or `enforce` | `observe` | Default mode for jobs that do not yet have their own mode. Any other value is treated as `enforce` (fail-closed). |
+| `unattended_violation` | `block` | `block` | What happens to an out-of-mandate call in a cron run. `block` is the only choice: nobody is present to approve. |
+| `interactive_violation` | `approve` or `block` | `approve` | What happens to an out-of-mandate call in an interactive scope. `approve` escalates to the Hermes approval prompt. `block` refuses the call. |
+| `observe_all_cron` | bool | `true` | Record call shapes for every cron job, not only jobs started with `hermes mandate watch`. When false, unwatched cron jobs are ignored entirely. |
+
+A job's own mode, set by `watch`, `approve`, `enforce`, `observe`, or `undo`, overrides the default `mode` setting.
+
+## Data store
+
+Mandate reads and writes only its own SQLite file:
+
+```
+<HERMES_HOME>/plugin-data/mandate/mandate.db
+```
+
+`HERMES_HOME` defaults to `~/.hermes`. When the Hermes plugin storage API is importable, the path comes from `plugins.plugin_storage.plugin_data_dir("mandate")`.
+
+Override the file with `MANDATE_DB` (a full path). The Desktop page uses the same resolution, but opens the file read-only.
+
+The database holds jobs, runs, observations, policy versions, approvals, drift, and interactive session scopes. Observations store call shapes, not file contents. Raw argument values are redacted (tokens, keys, passwords, URL credentials) and truncated. Inline code is stored as a sha256, never as text.
+
+The plugin never opens a socket, runs no shell commands, starts no background processes or threads, uses no credentials, and sends no telemetry. Stdlib only. No runtime dependencies.
+
+## Desktop page
+
+Hermes Desktop gets a **Mandate** page: sidebar entry and a palette command "Mandate: open jobs". It shows the jobs list, the Leash Line for the selected job, the diff to the pending version, and the drift timeline.
+
+It is read-only on purpose. Approving and widening stay in the terminal, where a human types them. The desktop half ships disabled. Turn it on in Capabilities, Plugins.
+
+Its data comes from `dashboard/plugin_api.py`, which opens Mandate's SQLite file read-only and serves two GET routes on Hermes's own local API, behind Hermes's normal auth:
+
+- `GET /api/plugins/mandate/jobs`
+- `GET /api/plugins/mandate/jobs/<job>`
+
+## Hooks and requirements
+
+`plugin.yaml` declares:
+
+- `requires_hermes: ">=0.23.0"`
+- `kind: standalone`
+- platforms: linux, macos
+- hooks: `pre_tool_call`, `post_tool_call`
+- tool: `mandate_status`
+
+`post_tool_call` only records the tool's status on the matching observation, when a `tool_call_id` is present. It never blocks or rewrites.

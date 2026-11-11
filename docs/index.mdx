@@ -1,0 +1,60 @@
+---
+title: "Overview"
+sidebarTitle: "Overview"
+description: "Learned least-privilege for unattended Hermes jobs. A per-job policy, compiled from observed runs, enforced in the tool loop after a human approves it."
+keywords: ["Mandate", "Hermes", "Nous Research", "cron", "least privilege", "plugin"]
+---
+
+Learned least-privilege for unattended Hermes jobs.
+
+Built on [Hermes](https://github.com/NousResearch/hermes-agent) by [Nous Research](https://nousresearch.com). Thanks to Nous for the Hermes Agent Plugin Hackathon.
+
+<Frame>
+  <img src="/images/hero-slot.svg" alt="Placeholder for the Mandate README hero. Scriptorium art goes here." />
+</Frame>
+
+A Hermes cron job that "triages my repo issues" gets the whole terminal and file toolset, with any argument, every night, with nobody watching. Mandate watches what the job actually does, turns that into a short, readable policy (tools, path globs, command shapes, hosts, a write budget), and once a human approves it, blocks every call outside that policy inside the tool loop. Blocked calls land in a drift inbox you can review and widen.
+
+<Columns cols={2}>
+  <Card title="Quickstart" icon="terminal" href="/quickstart">
+    Install, observe, propose, approve, and enforce.
+  </Card>
+  <Card title="Proof" icon="check" href="/proof">
+    `make prove` on Hermes v0.23.0 and v0.23.1, 112 tests.
+  </Card>
+  <Card title="Concepts" icon="book-open" href="/concepts">
+    Mandate format, evidence counts, the Leash Line, drift, widen, undo, fail-closed.
+  </Card>
+  <Card title="Security and limits" icon="shield" href="/security">
+    What Mandate sees, what it does not, and the honest known limits.
+  </Card>
+</Columns>
+
+## Why this exists
+
+Hermes users have asked for a way to restrict unattended cron jobs, and several open bugs show that Hermes's own `cron_mode: deny` can be bypassed or ignored. These titles were verified against the live issues on 10 Nov 2026:
+
+- [#20984](https://github.com/NousResearch/hermes-agent/issues/20984) (open): *feat: add cron_mode: allowlist to restrict cron jobs to command_allowlist only.* A feature request for a cron-only allowlist so a job cannot use the rest of the toolset.
+- [#60505](https://github.com/NousResearch/hermes-agent/issues/60505) (open): *Approval gate: fail-closed option for non-interactive contexts + permanent allowlist bypasses cron_mode deny.* No fail-closed path for unattended runs, and a permanent allowlist can bypass `cron_mode: deny`.
+- [#144434](https://github.com/NousResearch/hermes-agent/issues/144434) (open): *[Bug]: command_allowlist (Always Allow) also exempts commands in cron runs with cron_mode: deny.* "Always Allow" still applies during cron, even when cron mode is deny.
+- [#83626](https://github.com/NousResearch/hermes-agent/issues/83626) (open): *Cron command guards ignore cron_mode when HERMES_EXEC_ASK is inherited.* Inherited ask settings can make the cron guards ignore the configured cron mode.
+- [#58673](https://github.com/NousResearch/hermes-agent/issues/58673) (open): *[Bug]: approvals.cron_mode: deny never applies to gateway-hosted cron/kanban sessions — each gated call blocks for approvals.gateway_timeout.* Gateway-hosted cron and kanban sessions do not get deny; they wait out the gateway timeout instead.
+
+Mandate does not patch those Hermes bugs. It addresses the same pain from the plugin side: each job gets its own policy, cron violations are always blocked, and Mandate never returns `approve` from a cron run, so `approvals.cron_mode` cannot turn a violation into an approval.
+
+## How it is different
+
+Rivals such as [Hermes Guard](https://github.com/elianjuan-g/hermes-guard) and [agent-security-guard](https://github.com/xMannixx/Agent-Security-Guard) use hand-written fixed pattern lists. Mandate learns a per-job policy from observed runs, then a human approves it.
+
+The three can run together. The other two look for injected content and risky transitions. Mandate limits a known job to the calls it was approved to make. The comparison table, with source links, is in the [repository README](https://github.com/JoeProAI/mandate#how-it-compares).
+
+## Why a plugin and not a prompt
+
+- Enforcement happens in `pre_tool_call`, before the tool runs. A prompt can be ignored or overwritten by a prompt injection in an issue body. A hook vetoes the call regardless of what the model wants.
+- It needs the identity of the running cron execution (`ctx.current_cron_execution()`), so each job gets its own policy and two jobs running at once never share one.
+- It keeps state across runs (observations, versions, approvals, drift) in its own SQLite store.
+- It parses arguments: shell segments, nested interpreters, resolved paths, parsed hostnames.
+
+## Visuals still landing
+
+Scriptorium is doing a themed pass on the README hero, the Leash Line, the video frames, and the docs art direction. Until those files arrive, the slots on this site are labeled placeholders. The Leash Line screenshot in [Concepts](/concepts) and [Proof](/proof) is a real terminal capture from `demo/run_demo.sh`, not a mock.

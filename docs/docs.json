@@ -1,0 +1,119 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "maple",
+  "name": "Mandate",
+  "description": "Learned least-privilege for unattended Hermes jobs.",
+  "colors": {
+    "primary": "#6B8CFF",
+    "light": "#8BA3FF",
+    "dark": "#3D5BD4"
+  },
+  "appearance": {
+    "default": "dark",
+    "strict": false
+  },
+  "background": {
+    "decoration": "grid",
+    "color": {
+      "light": "#F4F6FA",
+      "dark": "#0B0E14"
+    }
+  },
+  "logo": {
+    "light": "/images/logo-light.svg",
+    "dark": "/images/logo-dark.svg",
+    "href": "/"
+  },
+  "favicon": "/images/favicon.svg",
+  "fonts": {
+    "heading": {
+      "family": "IBM Plex Sans",
+      "weight": 600
+    },
+    "body": {
+      "family": "IBM Plex Sans",
+      "weight": 400
+    }
+  },
+  "icons": {
+    "library": "lucide"
+  },
+  "navbar": {
+    "links": [
+      {
+        "type": "github",
+        "href": "https://github.com/JoeProAI/mandate"
+      },
+      {
+        "label": "Hermes",
+        "href": "https://github.com/NousResearch/hermes-agent"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Quickstart",
+      "href": "/quickstart"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/JoeProAI/mandate",
+      "website": "https://nousresearch.com"
+    },
+    "links": [
+      {
+        "header": "Mandate",
+        "items": [
+          { "label": "GitHub", "href": "https://github.com/JoeProAI/mandate" },
+          { "label": "Quickstart", "href": "/quickstart" },
+          { "label": "Proof", "href": "/proof" }
+        ]
+      },
+      {
+        "header": "Nous Research",
+        "items": [
+          { "label": "Nous Research", "href": "https://nousresearch.com" },
+          { "label": "Hermes Agent", "href": "https://github.com/NousResearch/hermes-agent" },
+          { "label": "Built on Hermes", "href": "/nous" }
+        ]
+      }
+    ]
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get started",
+        "pages": [
+          "index",
+          "quickstart",
+          "concepts"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "cli",
+          "configuration",
+          "proof"
+        ]
+      },
+      {
+        "group": "About",
+        "pages": [
+          "security",
+          "faq",
+          "nous"
+        ]
+      }
+    ]
+  },
+  "styling": {
+    "eyebrows": "breadcrumbs",
+    "codeblocks": {
+      "theme": {
+        "light": "github-light",
+        "dark": "github-dark"
+      }
+    }
+  }
+}
