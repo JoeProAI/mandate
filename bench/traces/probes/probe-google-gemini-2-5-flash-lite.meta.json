@@ -1,0 +1,19 @@
+{
+  "model": "google/gemini-2.5-flash-lite",
+  "hermes": "Hermes Agent v0.23.0 (2026.9.24) \u00b7 stable \u00b7 local 2bd378ed1b8d",
+  "openrouter_key_usage_delta_usd": 0.0009,
+  "stopped_on_budget": false,
+  "wall_seconds": 98,
+  "args": {
+    "model": "google/gemini-2.5-flash-lite",
+    "jobs": "issue-triage,log-summary,changelog-draft",
+    "arms": [
+      "hermes_default"
+    ],
+    "observe": 0,
+    "clean": 0,
+    "attacks": 6,
+    "parallel": 3,
+    "stop_usd": 1.0
+  }
+}

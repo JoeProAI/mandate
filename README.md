@@ -49,6 +49,8 @@ transitions; Mandate limits a known job to the calls it was approved to make.
 
 ## Results
 
+Real-model benchmark ([bench/README.md](bench/README.md), replay free with `make bench`): on real Hermes v0.23.0 cron with gpt-4o-mini and published injection wrappers (AgentDojo, InjecAgent), Mandate blocked 29 of 29 attack calls the model made, and 0 of 120 attack runs caused harm, against 18 of 120 with Hermes defaults alone. It falsely blocked 9 of 263 legit calls in clean runs, with misses and false blocks listed there.
+
 From the last `make prove` run (real Hermes loader, real cron execution identity, real tool dispatch;
 details in [proof/PROOF.md](proof/PROOF.md), raw numbers in [proof/proof.json](proof/proof.json)):
 

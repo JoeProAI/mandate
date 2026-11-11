@@ -1,0 +1,12 @@
+manifest_version: 2
+name: bench_recorder
+version: "0.1.0"
+description: "Benchmark-only trace recorder for Mandate's bench. Records every tool call the model makes and its outcome. Never blocks. Not part of Mandate."
+author: "Joe Gaither (JoeProAI)"
+license: MIT
+requires_hermes: ">=0.23.0"
+kind: standalone
+platforms: [linux, macos]
+provides_hooks:
+  - pre_tool_call
+  - post_tool_call
