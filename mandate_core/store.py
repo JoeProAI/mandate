@@ -152,6 +152,18 @@ class Store:
                       (job_id, run_id, time.time(), shape["tool"], json.dumps(shape, sort_keys=True), outcome,
                        tool_call_id))
 
+    def run_writes(self, job_id: str, run_id: str) -> tuple[set[str], int]:
+        """(inside paths written, write calls made) by the not-blocked calls of one run so far."""
+        paths: set[str] = set()
+        calls = 0
+        for row in self.q("SELECT shape FROM observations WHERE job_id=? AND run_id=? AND outcome IN "
+                          "('observed','allowed','would_block')", (job_id, run_id)):
+            d = json.loads(row["shape"])
+            if int(d.get("write_count", 0)):
+                calls += 1
+                paths.update(v for v, inside, ok in d.get("writes", []) if inside and ok)
+        return paths, calls
+
     def mark_status(self, tool_call_id: str, status: str) -> None:
         self.x("UPDATE observations SET status=? WHERE tool_call_id=? AND status IS NULL", (status, tool_call_id))
 

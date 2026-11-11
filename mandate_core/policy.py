@@ -111,24 +111,162 @@ def _path_ok(ref: PathRef, rules: Iterable[Rule]) -> bool:
     return any(glob_match(r.value, ref) for r in rules)
 
 
-def check(shape: CallShape, policy: Policy, writes_so_far: int = 0) -> list[Violation]:
-    """Every way *shape* falls outside *policy*. Empty list means allowed."""
+def _read_ok(ref: PathRef, policy: "Policy") -> bool:
+    """A read rule `d/**` also covers reading the directory `d` itself (a search or listing of it)."""
+    if _path_ok(ref, policy.reads) or _path_ok(ref, policy.writes):
+        return True
+    return ref.valid and ref.inside and any(r.value == ref.value.rstrip("/") + "/**" for r in policy.reads)
+
+
+# Tool families: the model swaps these freely between runs. A tool counts as approved when another tool of its
+# family is approved; the path rules still decide what it may touch.
+READ_FAMILY = frozenset({"read_file", "search_files"})
+EDIT_FAMILY = frozenset({"write_file", "patch"})
+
+# Read-only shell commands that may be widened (new flags, read-back of approved paths). Value: flags that make
+# the command write, run code or read outside its operands, so they are never widened.
+READ_ONLY_HEADS: dict[str, frozenset[str]] = {
+    "cat": frozenset(), "head": frozenset(), "tail": frozenset(), "wc": frozenset(), "nl": frozenset(),
+    "tac": frozenset(), "ls": frozenset(), "stat": frozenset(), "file": frozenset(), "du": frozenset(),
+    "diff": frozenset(), "cut": frozenset(), "tr": frozenset(),
+    "grep": frozenset({"-r", "-R", "--recursive", "--dereference-recursive", "-d", "--directories"}),
+    "egrep": frozenset({"-r", "-R", "--recursive", "--dereference-recursive", "-d", "--directories"}),
+    "fgrep": frozenset({"-r", "-R", "--recursive", "--dereference-recursive", "-d", "--directories"}),
+    "sort": frozenset({"-o", "--output", "--compress-program", "-T", "--temporary-directory"}),
+    "uniq": frozenset(),
+}
+# Commands whose only effect is printing their own arguments.
+PRINT_HEADS = frozenset({"echo", "printf", "true", "pwd", "date"})
+MKDIR_FLAGS = frozenset({"-p", "--parents", "-v", "--verbose"})
+REWRITE_EXTRA = 4   # rewrites of an already-written path allowed per run on top of max_writes_per_run
+
+
+def _plain(seg) -> bool:
+    """A parsed segment with nothing hidden: no opaque part, env prefix, env wrapper or pathed head."""
+    import posixpath
+    return (not seg.opaque and not seg.env and not seg.extra.get("env_wrapper")
+            and not posixpath.dirname(seg.head or "") and "refs" in seg.extra)
+
+
+def _seg_hosts(seg) -> list[str]:
+    from .shell import host_candidates
+    return host_candidates(seg)
+
+
+def _readonly_ok(seg, policy: Policy, rules: list["CommandRule"]) -> bool:
+    """A read-only command whose every operand is a path the mandate already lets the job read or write.
+
+    Covers flag variance of a learned read-only command (grep -c vs grep -ic), and read-back of approved paths
+    (cat reports/x.md). Never covers a write, a redirect out, a network destination, or a path outside the
+    approved rules, so it does not widen what the job can reach, only how it phrases reading it."""
+    if not _plain(seg) or seg.is_write or _seg_hosts(seg):
+        return False
+    import posixpath
+    head = posixpath.basename(seg.head).lower()
+    if any(op.lstrip("0123456789") not in ("<",) for op, _ in seg.redirects if _ not in
+           ("/dev/null", "/dev/stdout", "/dev/stderr")):
+        return False
+    refs = [r for _, r in seg.extra["refs"]]
+    if head in PRINT_HEADS:
+        return not refs and not seg.redirects
+    banned = READ_ONLY_HEADS.get(head)
+    if banned is None or set(seg.flags) & banned:
+        return False
+    if head == "uniq" and len(seg.positionals) > 1:   # uniq IN OUT writes OUT
+        return False
+    if not all(r.valid and r.inside and (_path_ok(r, policy.reads) or _path_ok(r, policy.writes)) for r in refs):
+        return False
+    if refs:
+        return True
+    # No operands: reads stdin (or lists the workdir for ls/du). Only widen a command the job already uses.
+    return any(r.exact is None and r.words and posixpath.basename(r.words[0]).lower() == head for r in rules)
+
+
+def _write_dirs(policy: Policy) -> set[str]:
+    """Every ancestor directory of a literal directory part of an inside write rule."""
+    import posixpath
+    out: set[str] = set()
+    for r in policy.writes:
+        d = posixpath.dirname(r.value)
+        if not d or r.value.startswith("/") or any(c in d for c in "*?[]"):
+            continue
+        while d and d not in (".", "/"):
+            out.add(d)
+            d = posixpath.dirname(d)
+    return out
+
+
+def _mkdir_ok(seg, dirs: set[str]) -> bool:
+    import posixpath
+    if not _plain(seg) or seg.redirects or posixpath.basename(seg.head).lower() != "mkdir":
+        return False
+    if not set(seg.flags) <= MKDIR_FLAGS:
+        return False
+    refs = [r for _, r in seg.extra["refs"]]
+    return bool(refs) and all(r.valid and r.inside and r.value in dirs for r in refs)
+
+
+def _mkdir_refs(shape: CallShape, dirs: set[str]) -> set[PathRef]:
+    return {r for s in shape.segments if s.is_write and _mkdir_ok(s, dirs) for _, r in s.extra["refs"]}
+
+
+def write_cost(shape: CallShape, policy: Policy, written: set[str] | None = None) -> int:
+    """Writes this call charges against max_writes_per_run: mkdir of an approved parent dir is free, and so is
+    rewriting a path this run already wrote (capped separately in check)."""
+    dirs = _write_dirs(policy)
+    cost = shape.write_count - sum(1 for s in shape.segments if s.is_write and _mkdir_ok(s, dirs))
+    mk = _mkdir_refs(shape, dirs)
+    refs = [r for r in shape.writes if r not in mk]
+    if cost > 0 and written is not None and refs and len(refs) >= cost \
+            and all(r.valid and r.inside and r.value in written for r in refs):
+        return 0
+    return max(cost, 0)
+
+
+def check(shape: CallShape, policy: Policy, writes_so_far: int = 0, written: set[str] | None = None,
+          raw_writes_so_far: int | None = None) -> list[Violation]:
+    """Every way *shape* falls outside *policy*. Empty list means allowed.
+
+    writes_so_far counts distinct writes this run (what write_cost charged); *written* is the set of inside
+    paths this run already wrote; raw_writes_so_far counts every write call, rewrites included."""
     if shape.exempt:
         return []
     out: list[Violation] = []
-    if shape.tool not in {r.value for r in policy.tools}:
-        out.append(Violation("tools", shape.tool, f"tool '{shape.tool}' is not in the mandate"))
+    rules = [CommandRule.parse(r.value) for r in policy.commands]
+    tools = {r.value for r in policy.tools}
+    dirs = _write_dirs(policy)
+    seg_ok = {}
+    for i, seg in enumerate(shape.segments):
+        if any(r.matches(seg) for r in rules):
+            seg_ok[i] = "rule"
+        elif seg.is_write and _mkdir_ok(seg, dirs):
+            seg_ok[i] = "mkdir"
+        elif _readonly_ok(seg, policy, rules):
+            seg_ok[i] = "readonly"
+    if shape.tool not in tools:
+        fam_ok = ((shape.tool in READ_FAMILY and tools & READ_FAMILY)
+                  or (shape.tool in EDIT_FAMILY and tools & EDIT_FAMILY))
+        # A terminal call made only of read-back / mkdir-of-parent segments needs no terminal rule.
+        term_ok = (shape.tool == "terminal" and shape.segments and not shape.hosts
+                   and all(seg_ok.get(i) in ("mkdir", "readonly") for i in range(len(shape.segments))))
+        if not (fam_ok or term_ok):
+            out.append(Violation("tools", shape.tool, f"tool '{shape.tool}' is not in the mandate"))
     for ref in shape.reads:
-        if not _path_ok(ref, policy.reads) and not _path_ok(ref, policy.writes):
+        if not _read_ok(ref, policy):
+            # A file-name listing (search_files target=files) inside the workdir reveals names, not contents.
+            if shape.listing and ref.valid and ref.inside and policy.reads:
+                continue
             where = "inside" if ref.inside else "outside the workdir"
             out.append(Violation("paths.read", ref.value, f"read of {ref.value} ({where}) matches no path rule"))
+    mk = {r for i, s in enumerate(shape.segments) if seg_ok.get(i) == "mkdir" for _, r in s.extra["refs"]}
     for ref in shape.writes:
+        if ref in mk:
+            continue
         if not _path_ok(ref, policy.writes):
             where = "inside" if ref.inside else "outside the workdir"
             out.append(Violation("paths.write", ref.value, f"write to {ref.value} ({where}) matches no write rule"))
-    rules = [CommandRule.parse(r.value) for r in policy.commands]
-    for seg in shape.segments:
-        if any(r.matches(seg) for r in rules):
+    for i, seg in enumerate(shape.segments):
+        if i in seg_ok:
             continue
         if seg.opaque:
             out.append(Violation("commands", "=" + _ws(seg.raw), f"opaque segment ({seg.opaque}): {seg.raw[:120]}"))
@@ -138,10 +276,17 @@ def check(shape: CallShape, policy: Policy, writes_so_far: int = 0) -> list[Viol
         if not any(host_match(r.value, h) for r in policy.hosts):
             out.append(Violation("hosts", h, f"host {h} is not in the mandate"))
     if policy.max_writes_per_run is not None and shape.write_count:
-        if writes_so_far + shape.write_count > policy.max_writes_per_run:
+        cost = write_cost(shape, policy, written)
+        if cost and writes_so_far + cost > policy.max_writes_per_run:
             out.append(Violation("limits", f"max_writes_per_run={policy.max_writes_per_run}",
-                                 f"write budget exceeded: {writes_so_far + shape.write_count} writes in this run, "
+                                 f"write budget exceeded: {writes_so_far + cost} writes in this run, "
                                  f"mandate allows {policy.max_writes_per_run}"))
+        elif not cost and raw_writes_so_far is not None and shape.writes \
+                and raw_writes_so_far + 1 > policy.max_writes_per_run + REWRITE_EXTRA \
+                and not all(r in mk for r in shape.writes):
+            out.append(Violation("limits", f"max_writes_per_run={policy.max_writes_per_run}",
+                                 f"rewrite cap exceeded: {raw_writes_so_far + 1} write calls in this run, "
+                                 f"mandate allows {policy.max_writes_per_run} paths and {REWRITE_EXTRA} rewrites"))
     return out
 
 

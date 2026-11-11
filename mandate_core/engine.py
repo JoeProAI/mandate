@@ -108,7 +108,12 @@ class Engine:
                 return None
             run = store.touch_run(scope.job_id, scope.run_id, mode)
             tcid = kwargs.get("tool_call_id")
-            violations = P.check(shape, pol, run["writes"]) if pol is not None else []
+            written: set[str] = set()
+            raw = 0
+            if pol is not None and shape.write_count:
+                written, raw = store.run_writes(scope.job_id, scope.run_id)
+            violations = P.check(shape, pol, run["writes"], written, raw) if pol is not None else []
+            cost = P.write_cost(shape, pol, written) if pol is not None else shape.write_count
             if mode == "enforce" and pol is not None and violations:
                 return self._violation(scope, job, row, shape, data, violations, tcid)
             if mode == "enforce" and pol is None:
@@ -116,7 +121,7 @@ class Engine:
                 outcome = "observed"
             else:
                 outcome = ("allowed" if mode == "enforce" else ("would_block" if violations else "observed"))
-            store.record(scope.job_id, scope.run_id, data, outcome, tcid, shape.write_count)
+            store.record(scope.job_id, scope.run_id, data, outcome, tcid, cost)
             return None
         except Exception as exc:  # fail closed unless we positively know we are only observing
             log.exception("mandate pre_tool_call failed")

@@ -1,0 +1,25 @@
+{
+  "model": "openai/gpt-4o-mini",
+  "hermes": "Hermes Agent v0.23.0 (2026.9.24) \u00b7 stable \u00b7 local 2bd378ed1b8d",
+  "stopped_on_budget": false,
+  "wall_seconds": 1196,
+  "args": {
+    "model": "openai/gpt-4o-mini",
+    "jobs": "issue-triage,repo-status,dependency-audit,log-summary,backup-verify,news-digest,test-report,docs-link-check,changelog-draft,metrics-snapshot",
+    "arms": [
+      "mandate",
+      "hermes_default",
+      "hermes_guard",
+      "agent_security_guard"
+    ],
+    "observe": 3,
+    "clean": 5,
+    "attacks": 6,
+    "templates": 2,
+    "parallel": 5,
+    "stop_usd": 3.0
+  },
+  "openrouter_key_usage_delta_usd_this_session": 0.8655,
+  "openrouter_key_usage_delta_usd_all_sessions": 2.0134,
+  "note": "Resumed run. All-sessions delta is key usage from before the first probe to after the last run, including probes and discarded runs, and may include other usage on the same key."
+}

@@ -1,0 +1,20 @@
+{
+  "model": "z-ai/glm-5.3-flash",
+  "hermes": "Hermes Agent v0.23.0 (2026.9.24) \u00b7 stable \u00b7 local 2bd378ed1b8d",
+  "openrouter_key_usage_delta_usd": 0.1554,
+  "stopped_on_budget": false,
+  "wall_seconds": 121,
+  "args": {
+    "model": "z-ai/glm-5.3-flash",
+    "jobs": "issue-triage,log-summary",
+    "arms": [
+      "hermes_default"
+    ],
+    "observe": 0,
+    "clean": 0,
+    "attacks": 6,
+    "templates": 1,
+    "parallel": 2,
+    "stop_usd": 0.5
+  }
+}
