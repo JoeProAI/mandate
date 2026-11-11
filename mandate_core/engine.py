@@ -77,6 +77,14 @@ class Engine:
             self._policy_cache[sha] = pol
         return pol
 
+    @staticmethod
+    def shape_for(tool_name: str, args: Any, cwd: str, root: str) -> tuple[CallShape, dict]:
+        """Normalize a call and build the redacted record stored as an observation (live and learned)."""
+        shape = normalize_call(tool_name, args if args is not None else {}, cwd, root)
+        data = shape.to_json()
+        data["root"] = root
+        return shape, data
+
     # ---------------------------------------------------------------- hooks
 
     def pre_tool_call(self, tool_name: str = "", args: Any = None, **kwargs: Any) -> dict | None:
@@ -95,12 +103,10 @@ class Engine:
             pol = self.parsed(row) if row is not None else None
             cwd = self.cwd() or os.getcwd()
             root = (pol.workdir if pol and pol.workdir else cwd)
-            shape = normalize_call(tool_name, args if args is not None else {}, cwd, root)
+            shape, data = self.shape_for(tool_name, args, cwd, root)
             if shape.exempt:
                 return None
             run = store.touch_run(scope.job_id, scope.run_id, mode)
-            data = shape.to_json()
-            data["root"] = root
             tcid = kwargs.get("tool_call_id")
             violations = P.check(shape, pol, run["writes"]) if pol is not None else []
             if mode == "enforce" and pol is not None and violations:

@@ -5,10 +5,13 @@ from __future__ import annotations
 import argparse
 import difflib
 import json
+import os
+import sqlite3
 import sys
 import time
 from collections import defaultdict
 
+from . import history as H
 from . import policy as P
 from .engine import Engine
 from .normalize import CallShape
@@ -28,6 +31,11 @@ def setup(parser: argparse.ArgumentParser) -> None:
                         ("observe", "switch a job back to observe")]:
         p = sub.add_parser(name, help=help_)
         p.add_argument("job")
+        if name == "propose":
+            p.add_argument("--learn-from", metavar="SOURCE",
+                           help="seed observations from existing Hermes run history first: "
+                                "history, cron:<job>, or a session .jsonl file or directory")
+            p.add_argument("--workdir", help="job workdir for learned calls (default: the cron job's workdir)")
         if name == "approve":
             p.add_argument("--yes", action="store_true", help="approve without the interactive prompt")
             p.add_argument("--observe", action="store_true", help="approve but keep the job in observe mode")
@@ -70,21 +78,26 @@ def _name(job) -> str:
     return job["job_name"] or job["job_id"]
 
 
-def _shapes_by_run(eng: Engine, job_id: str) -> tuple[dict[str, list[CallShape]], str]:
+def _shapes_by_run(eng: Engine, job_id: str) -> tuple[dict[str, list[CallShape]], str, set[str]]:
+    """Observed calls grouped by run, the dominant workdir, and the run ids learned from history."""
     runs: dict[str, list[CallShape]] = defaultdict(list)
     roots: dict[str, int] = defaultdict(int)
+    learned: set[str] = set()
     for row in eng.store.observations(job_id):
         data = json.loads(row["shape"])
         roots[data.get("root", "")] += 1
         runs[row["run_id"]].append(CallShape.from_json(data))
+        if row["source"] == "history":
+            learned.add(row["run_id"])
     root = sorted(roots.items(), key=lambda kv: (-kv[1], kv[0]))[0][0] if roots else ""
-    return dict(runs), root
+    return dict(runs), root, learned
 
 
 def cmd_watch(args, eng: Engine) -> int:
     job = eng.store.watch(args.job)
     print(f"Watching {args.job} in observe mode. Nothing will be blocked.")
     print("Let it run at least 3 times, then: hermes mandate propose " + args.job)
+    print(f"Already has Hermes history? Propose now: hermes mandate propose {args.job} --learn-from history")
     if job["job_id"].startswith("name:"):
         print("(bound by name: the first cron run of a job with this name adopts it)")
     return 0
@@ -98,26 +111,88 @@ def cmd_list(args, eng: Engine) -> int:
     return 0
 
 
+def _learn(args, eng: Engine) -> tuple[sqlite3.Row, list[str]]:
+    """Seed history observations for the job. Returns the job row and notes to print after the proposal."""
+    store = eng.store
+    job = store.job(args.job)
+    try:
+        hist = H.resolve(args.learn_from, args.job, job["job_id"] if job else None)
+    except H.HistoryError as exc:
+        raise UserError(str(exc)) from None
+    if not hist.runs:
+        where = "; ".join(hist.looked_in) or hist.label
+        extra = f" ({hist.skipped_rows + hist.skipped_calls} unparseable row(s) skipped)" \
+            if hist.skipped_rows + hist.skipped_calls else ""
+        raise UserError(f"no usable Hermes history for {args.job} from {args.learn_from!r}: "
+                        f"no tool calls found in {where}{extra}. Nothing was written.")
+    if job is None or (hist.job_id and job["job_id"] == f"name:{hist.job_name}"):
+        job = store.bind_job(hist.job_id or f"name:{args.job}", hist.job_name or args.job)
+        job = store.watch(job["job_id"])
+    root = args.workdir or hist.workdir
+    if not root:
+        _, live_root, _ = _shapes_by_run(eng, job["job_id"])
+        root = live_root or eng.cwd() or os.getcwd()
+    root = os.path.abspath(os.path.expanduser(root))
+    learned = []
+    for run in hist.runs:
+        shapes = [data for shape, data in (eng.shape_for(t, a, root, root) for t, a in run.calls)
+                  if not shape.exempt]
+        if shapes:
+            learned.append((run.run_id, run.started_at, shapes))
+    if not learned:
+        raise UserError(f"no usable Hermes history for {args.job}: every learned call was a Mandate tool. "
+                        "Nothing was written.")
+    store.replace_history(job["job_id"], learned)
+    calls = sum(len(s) for _, _, s in learned)
+    notes = [f"# learned from history: {calls} call(s) in {len(learned)} run(s) from {hist.label}, workdir {root}"]
+    skipped = hist.skipped_rows + hist.skipped_calls
+    if skipped or hist.blocked_calls:
+        notes.append(f"# skipped: {skipped} unparseable row(s) or call(s), {hist.blocked_calls} call(s) "
+                     "Mandate blocked at the time")
+    known = max(n for n in (hist.ledger_runs, hist.output_runs, 0) if n is not None)
+    if known > len(learned):
+        notes.append(f"# note: Hermes knows {known} run(s) of this job but only {len(learned)} left a transcript "
+                     "with tool calls")
+    return job, notes
+
+
 def cmd_propose(args, eng: Engine) -> int:
-    job = _job(eng, args.job)
-    runs, root = _shapes_by_run(eng, job["job_id"])
+    notes: list[str] = []
+    if getattr(args, "learn_from", None):
+        job, notes = _learn(args, eng)
+    else:
+        if getattr(args, "workdir", None):
+            raise UserError("--workdir only applies with --learn-from")
+        job = _job(eng, args.job)
+    runs, root, learned = _shapes_by_run(eng, job["job_id"])
     if not runs:
-        raise UserError(f"no observed calls for {args.job} yet")
-    pol = P.compile_policy(_name(job), runs, root)
+        raise UserError(f"no observed calls for {args.job} yet. If it has Hermes history, try "
+                        f"`hermes mandate propose {args.job} --learn-from history`.")
+    pol = P.compile_policy(_name(job), runs, root, learned)
     text = P.render(pol)
     sha = P.content_hash(text)
     store = eng.store
+    live = len(runs) - len(learned)
+    evidence = f"{len(runs)} run(s): {live} observed live, {len(learned)} learned from history" if learned \
+        else f"{len(runs)} run(s)"
     for existing in (store.latest_pending(job["job_id"]), store.active_policy(job["job_id"])):
         if existing is not None and existing["sha256"] == sha:
             print(text, end="")
+            for n in notes:
+                print(n)
             print(f"# unchanged: identical to v{existing['version']} sha256:{sha[:12]}")
             return 0
     version = store.add_policy(job["job_id"], text, sha, "propose")
     print(text, end="")
-    print(f"# proposed v{version} sha256:{sha[:12]}  ({pol.rule_count()} rules from {len(runs)} run(s))")
+    for n in notes:
+        print(n)
+    print(f"# proposed v{version} sha256:{sha[:12]}  ({pol.rule_count()} rules from {evidence})")
     if len(runs) < P.MIN_RUNS:
-        print(f"# warning: only {len(runs)} run(s) observed; {P.MIN_RUNS}+ give a more reliable mandate")
-    print(f"# next: hermes mandate approve {args.job}")
+        print(f"# warning: only {evidence}; {P.MIN_RUNS}+ give a more reliable mandate")
+    if learned and live < P.MIN_RUNS:
+        print("# warning: learned history shows what the job did, not what Mandate watched live. "
+              "Review each rule; pending until approved.")
+    print(f"# next: hermes mandate approve {_name(job) if getattr(args, 'learn_from', None) else args.job}")
     return 0
 
 
@@ -261,8 +336,10 @@ def status_text(eng: Engine, job, color: bool | None = None) -> str:
     active = eng.parsed(row) if row else None
     pending = P.parse(pend["yaml"]) if pend else None
     mode = job["mode"] or eng.default_mode()
+    runs = store.runs(job["job_id"])
     return leash_line(_name(job), active, row["version"] if row else None, row["sha256"] if row else None, mode,
-                      pending, store.drift(job["job_id"]), len(store.runs(job["job_id"])), color)
+                      pending, store.drift(job["job_id"]), len(runs), color,
+                      sum(1 for r in runs if r["source"] == "history"))
 
 
 def cmd_status(args, eng: Engine) -> int:

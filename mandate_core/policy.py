@@ -17,13 +17,14 @@ from .paths import PathRef, generalize_read, generalize_write, glob_match
 FORMAT_VERSION = 1
 MIN_RUNS = 3
 _ENV_TOKEN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=$")
-_SEEN = re.compile(r"seen (\d+)x")
+_SEEN = re.compile(r"seen (\d+)x(?:, (\d+)x from history)?")
 
 
 @dataclass
 class Rule:
     value: str
     evidence: int = 0
+    history: int = 0   # part of evidence learned from Hermes run history, not live hooks
 
 
 @dataclass
@@ -31,6 +32,7 @@ class Policy:
     job: str
     workdir: str = ""
     observed_runs: int = 0
+    history_runs: int = 0
     tools: list[Rule] = field(default_factory=list)
     reads: list[Rule] = field(default_factory=list)
     writes: list[Rule] = field(default_factory=list)
@@ -145,7 +147,10 @@ def check(shape: CallShape, policy: Policy, writes_so_far: int = 0) -> list[Viol
 
 # ---------------------------------------------------------------- compiling
 
-def compile_policy(job: str, runs: dict[str, list[CallShape]], workdir: str = "") -> Policy:
+def compile_policy(job: str, runs: dict[str, list[CallShape]], workdir: str = "",
+                   history: Iterable[str] = ()) -> Policy:
+    """*history* names the run ids learned from Hermes history; their evidence is counted separately too."""
+    hist_runs = set(history) & set(runs)
     tools: Counter[str] = Counter()
     reads: Counter[str] = Counter()
     writes: Counter[str] = Counter()
@@ -153,29 +158,36 @@ def compile_policy(job: str, runs: dict[str, list[CallShape]], workdir: str = ""
     cmd_count: Counter[tuple] = Counter()
     exact: Counter[str] = Counter()
     hosts: Counter[str] = Counter()
+    hist: dict[str, Counter] = defaultdict(Counter)
     max_writes = 0
     for run_id in sorted(runs):
         run_writes = 0
+        h = 1 if run_id in hist_runs else 0
+
+        def bump(family: str, counter: Counter, key) -> None:
+            counter[key] += 1
+            hist[family][key] += h
+
         for shape in runs[run_id]:
             if shape.exempt:
                 continue
-            tools[shape.tool] += 1
+            bump("tools", tools, shape.tool)
             for ref in shape.reads:
                 if ref.valid:
-                    reads[generalize_read(ref.value) if ref.inside else ref.value] += 1
+                    bump("reads", reads, generalize_read(ref.value) if ref.inside else ref.value)
             for ref in shape.writes:
                 if ref.valid:
-                    writes[generalize_write(ref.value) if ref.inside else ref.value] += 1
+                    bump("writes", writes, generalize_write(ref.value) if ref.inside else ref.value)
             for seg in shape.segments:
                 if seg.opaque:
-                    exact["=" + _ws(seg.raw)] += 1
+                    bump("commands", exact, "=" + _ws(seg.raw))
                     continue
                 key = (tuple(seg.env), tuple(seg.words))
                 cmd_flags[key].update(seg.flags)
-                cmd_count[key] += 1
-            for h in shape.hosts:
-                if not h.startswith("<invalid"):
-                    hosts[h] += 1
+                bump("cmdkey", cmd_count, key)
+            for host in shape.hosts:
+                if not host.startswith("<invalid"):
+                    bump("hosts", hosts, host)
             run_writes += shape.write_count
         max_writes = max(max_writes, run_writes)
     commands: Counter[str] = Counter()
@@ -183,15 +195,16 @@ def compile_policy(job: str, runs: dict[str, list[CallShape]], workdir: str = ""
         env, words = key
         toks = [f"{e}=" for e in env] + [_q(w) for w in words] + sorted(cmd_flags[key])
         commands[" ".join(toks)] += count
+        hist["commands"][" ".join(toks)] += hist["cmdkey"][key]
     commands.update(exact)
     # Drop read globs already covered by a write rule? No: keep reads explicit for reviewers.
 
-    def rules(c: Counter[str]) -> list[Rule]:
-        return [Rule(v, n) for v, n in sorted(c.items())]
+    def rules(c: Counter[str], family: str) -> list[Rule]:
+        return [Rule(v, n, hist[family][v]) for v, n in sorted(c.items())]
 
-    return Policy(job=job, workdir=workdir, observed_runs=len(runs), tools=rules(tools), reads=rules(reads),
-                  writes=rules(writes), commands=rules(commands), hosts=rules(hosts),
-                  max_writes_per_run=max_writes)
+    return Policy(job=job, workdir=workdir, observed_runs=len(runs), history_runs=len(hist_runs),
+                  tools=rules(tools, "tools"), reads=rules(reads, "reads"), writes=rules(writes, "writes"),
+                  commands=rules(commands, "commands"), hosts=rules(hosts, "hosts"), max_writes_per_run=max_writes)
 
 
 def _q(word: str) -> str:
@@ -205,14 +218,22 @@ def _scalar(v: str) -> str:
 
 
 def render(policy: Policy) -> str:
+    if policy.history_runs:
+        live = policy.observed_runs - policy.history_runs
+        head = (f"# Mandate for {policy.job}: generated from {policy.observed_runs} run(s): {live} observed live, "
+                f"{policy.history_runs} learned from Hermes history.")
+    else:
+        head = f"# Mandate for {policy.job}: generated from {policy.observed_runs} observed run(s)."
     lines = [
-        f"# Mandate for {policy.job}: generated from {policy.observed_runs} observed run(s).",
+        head,
         "# Review every rule. Nothing is enforced until `hermes mandate approve`.",
         f"mandate: {FORMAT_VERSION}",
         f"job: {_scalar(policy.job)}",
         f"workdir: {_scalar(policy.workdir)}",
         f"observed_runs: {policy.observed_runs}",
     ]
+    if policy.history_runs:
+        lines.append(f"history_runs: {policy.history_runs}")
 
     def block(name: str, items: list[Rule], indent: str = "") -> None:
         if not items:
@@ -220,7 +241,8 @@ def render(policy: Policy) -> str:
             return
         lines.append(f"{indent}{name}:")
         for r in items:
-            lines.append(f"{indent}  - {_scalar(r.value)}  # seen {r.evidence}x")
+            learned = f", {r.history}x from history" if r.history else ""
+            lines.append(f"{indent}  - {_scalar(r.value)}  # seen {r.evidence}x{learned}")
 
     block("tools", policy.tools)
     lines.append("paths:")
@@ -273,7 +295,7 @@ def parse(text: str) -> Policy:
                 raise PolicyParseError(f"line {n}: list item outside a rule list")
             val, comment = _parse_value(line[2:])
             m = _SEEN.search(comment)
-            targets[key].append(Rule(val, int(m.group(1)) if m else 0))
+            targets[key].append(Rule(val, int(m.group(1)) if m else 0, int(m.group(2) or 0) if m else 0))
             continue
         name, sep, rest = line.partition(":")
         if not sep:
@@ -291,6 +313,8 @@ def parse(text: str) -> Policy:
                 pol.workdir = val
             elif name == "observed_runs":
                 pol.observed_runs = int(val or 0)
+            elif name == "history_runs":
+                pol.history_runs = int(val or 0)
             elif name in ("tools", "commands", "hosts", "paths", "limits"):
                 if val not in ("", "[]"):
                     raise PolicyParseError(f"line {n}: {name} must be a list or block")

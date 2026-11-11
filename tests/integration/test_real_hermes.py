@@ -46,3 +46,10 @@ def test_legit_calls_still_succeed(scenario):
 
 def test_cron_visible_reason(scenario):
     assert scenario["cron_visible_reason"]
+
+
+def test_learn_from_history_proposes_without_live_runs(scenario):
+    assert scenario["learn_history_runs"] == 3
+    assert scenario["learn_rules_labeled"] > 0 and "3 learned from Hermes history" in scenario["learn_proposal"]
+    assert scenario["learn_pending_only"], scenario["learn_leash_line"]
+    assert scenario["learn_no_history_rc"] != 0 and "no usable Hermes history" in scenario["learn_no_history_err"]

@@ -63,6 +63,11 @@ class Store:
         with self._init_lock:
             c = self._conn()
             c.executescript(SCHEMA)
+            for table in ("runs", "observations"):
+                cols = {r["name"] for r in c.execute(f"PRAGMA table_info({table})")}
+                if "source" not in cols:
+                    # 'hook' = seen live by pre_tool_call; 'history' = learned from Hermes run history.
+                    c.execute(f"ALTER TABLE {table} ADD COLUMN source TEXT NOT NULL DEFAULT 'hook'")
 
     def _conn(self) -> sqlite3.Connection:
         c = getattr(self._local, "conn", None)
@@ -149,6 +154,26 @@ class Store:
 
     def mark_status(self, tool_call_id: str, status: str) -> None:
         self.x("UPDATE observations SET status=? WHERE tool_call_id=? AND status IS NULL", (status, tool_call_id))
+
+    def replace_history(self, job_id: str, runs: list[tuple[str, float, list[dict]]]) -> None:
+        """Store runs learned from Hermes history as source='history'; re-learning a run replaces it."""
+        c = self._conn()
+        c.execute("BEGIN IMMEDIATE")
+        try:
+            for run_id, started_at, shapes in runs:
+                c.execute("DELETE FROM observations WHERE job_id=? AND run_id=? AND source='history'", (job_id, run_id))
+                c.execute("DELETE FROM runs WHERE job_id=? AND run_id=? AND source='history'", (job_id, run_id))
+                writes = sum(int(d.get("write_count", 0)) for d in shapes)
+                c.execute("INSERT INTO runs(job_id, run_id, started_at, mode, calls, writes, source) "
+                          "VALUES (?,?,?,?,?,?,'history')", (job_id, run_id, started_at, "history", len(shapes), writes))
+                for d in shapes:
+                    c.execute("INSERT INTO observations(job_id, run_id, ts, tool, shape, outcome, source) "
+                              "VALUES (?,?,?,?,?,'observed','history')",
+                              (job_id, run_id, started_at, d["tool"], json.dumps(d, sort_keys=True)))
+            c.execute("COMMIT")
+        except BaseException:
+            c.execute("ROLLBACK")
+            raise
 
     def runs(self, job_id: str) -> list[sqlite3.Row]:
         return self.q("SELECT * FROM runs WHERE job_id=? ORDER BY started_at, run_id", (job_id,))
